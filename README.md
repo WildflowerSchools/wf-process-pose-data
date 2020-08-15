@@ -42,3 +42,16 @@ Tools for fetching, processing, visualizing, and analyzing Wildflower human pose
 * Rewrite function which overlays geoms on videos so that user can specify a time span that it is a subset of the geoms and/or the video
 * Make all time inputs more permissive (in terms of type/format) and make all time outputs more consistent
 * Be consistent about accepting timestamp arguments in any format parseable by `pd.to_datetime()`
+
+
+# Run locally in docker container
+
+From root of this directory:
+
+$ docker build -t wf .
+
+$ docker run -it wf
+
+inside the container shell:
+
+$ python3 __init__.py
