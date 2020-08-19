@@ -51,7 +51,3 @@ From root of this directory:
 $ docker build -t wf .
 
 $ docker run -it wf
-
-inside the container shell:
-
-$ python3 __init__.py
