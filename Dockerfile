@@ -10,4 +10,4 @@ WORKDIR /wf-process-pose-data
 
 COPY . .
 
-RUN yes | pip3 install -r requirements.txt
+RUN pip3 install -e .
