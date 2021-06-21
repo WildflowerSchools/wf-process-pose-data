@@ -1699,8 +1699,8 @@ def download_position_data_by_datapoint(
                     'z_position'
                 ])
             )
-            position_data_df = pose_connect.identify.resample_uwb_data(
-                uwb_data_df=position_data_df,
+            position_data_df = pose_connect.identify.resample_sensor_data(
+                sensor_data_df=position_data_df,
                 id_field_names=[
                     'person_id'
                 ],
@@ -1770,8 +1770,8 @@ def download_position_data_by_datapoint(
             )
             if len(position_data_df) == 0:
                 continue
-            position_data_df = pose_connect.identify.resample_uwb_data(
-                uwb_data_df=position_data_df,
+            position_data_df = pose_connect.identify.resample_sensor_data(
+                sensor_data_df=position_data_df,
                 id_field_names=[
                     'assignment_id',
                     'object_id',
@@ -2031,8 +2031,8 @@ def download_position_data_trays_by_datapoint(
                     'z_position'
                 ])
             )
-            position_data_df = pose_connect.identify.resample_uwb_data(
-                uwb_data_df=position_data_df,
+            position_data_df = pose_connect.identify.resample_sensor_data(
+                sensor_data_df=position_data_df,
                 id_field_names=[
                     'tray_id',
                     'material_id'
@@ -2103,8 +2103,8 @@ def download_position_data_trays_by_datapoint(
             )
             if len(position_data_df) == 0:
                 continue
-            position_data_df = pose_connect.identify.resample_uwb_data(
-                uwb_data_df=position_data_df,
+            position_data_df = pose_connect.identify.resample_sensor_data(
+                sensor_data_df=position_data_df,
                 id_field_names=[
                     'assignment_id',
                     'object_id',
@@ -2364,7 +2364,7 @@ def identify_pose_tracks_3d_local_by_segment(
         if return_match_statistics:
             pose_identification_time_segment_df, match_statistics_time_segment_df = pose_connect.identify.identify_poses(
                 poses_3d_with_tracks_df=poses_3d_with_tracks_time_segment_df,
-                uwb_data_resampled_df=uwb_data_resampled_time_segment_df,
+                sensor_data_resampled_df=uwb_data_resampled_time_segment_df,
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
@@ -2374,7 +2374,7 @@ def identify_pose_tracks_3d_local_by_segment(
         else:
             pose_identification_time_segment_df = pose_connect.identify.identify_poses(
                 poses_3d_with_tracks_df=poses_3d_with_tracks_time_segment_df,
-                uwb_data_resampled_df=uwb_data_resampled_time_segment_df,
+                sensor_data_resampled_df=uwb_data_resampled_time_segment_df,
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
