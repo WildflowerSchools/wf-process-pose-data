@@ -13,13 +13,12 @@ def get_version():
 # Dependencies (format is 'PYPI_PACKAGE_NAME[>]=VERSION_NUMBER')
 BASE_DEPENDENCIES = [
     'wf-honeycomb-io>=0.0.1',
-    'wf-smc-kalman>=0.1.0',
     'wf-cv-utils>=3.0.0',
     'wf-video-io>=1.0.0',
     'wf-geom-render>=0.3.0',
+    'pose-connect>=0.1.0',
     'pandas>=1.2.2',
     'numpy>=1.20.1',
-    'networkx>=2.5',
     'opencv-python>=4.5.1',
     'matplotlib>=3.3.4',
     'seaborn>=0.11.1',
@@ -59,7 +58,7 @@ setup(
     #          "COMMAND_NAME = MODULE_PATH:METHOD_NAME"
     #     ]
     # },
-    keywords=['pose estimation'],
+    keywords=['pose reconstruction', 'pose tracking'],
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',

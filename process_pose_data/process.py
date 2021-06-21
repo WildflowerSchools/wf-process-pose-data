@@ -1,8 +1,8 @@
 import process_pose_data.local_io
-import process_pose_data.reconstruct
-import process_pose_data.track_poses
-import process_pose_data.identify
 import process_pose_data.overlay
+import pose_connect.reconstruct
+import pose_connect.track
+import pose_connect.identify
 import honeycomb_io
 import video_io
 import pandas as pd
@@ -603,7 +603,6 @@ def reconstruct_poses_3d_local_by_time_segment(
         audience=None,
         client_id=None,
         client_secret=None,
-        pose_model_id=None,
         camera_calibrations=camera_calibrations,
         min_keypoint_quality=min_keypoint_quality,
         min_num_keypoints=min_num_keypoints,
@@ -829,7 +828,7 @@ def reconstruct_poses_3d_local_timestamp(
                 break
     if len(missing_cameras) > 0:
         poses_2d_df_timestamp = poses_2d_df_timestamp.loc[~poses_2d_df_timestamp['camera_id'].isin(missing_cameras)]
-    poses_3d_df_timestamp = process_pose_data.reconstruct.reconstruct_poses_3d_timestamp(
+    poses_3d_df_timestamp = pose_connect.reconstruct.reconstruct_poses_3d_timestamp(
         poses_2d_df_timestamp=poses_2d_df_timestamp,
         camera_calibrations=camera_calibrations,
         min_keypoint_quality=min_keypoint_quality,
@@ -1002,7 +1001,7 @@ def reconstruct_poses_3d_local_timestamp_legacy(
                 break
     if len(missing_cameras) > 0:
         poses_2d_df_timestamp = poses_2d_df_timestamp.loc[~poses_2d_df_timestamp['camera_id'].isin(missing_cameras)]
-    poses_3d_df_timestamp = process_pose_data.reconstruct.reconstruct_poses_3d_timestamp_legacy(
+    poses_3d_df_timestamp = pose_connect.reconstruct.reconstruct_poses_3d_timestamp_legacy(
         poses_2d_df_timestamp=poses_2d_df_timestamp,
         camera_calibrations=camera_calibrations,
         min_keypoint_quality=min_keypoint_quality,
@@ -1035,7 +1034,6 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
     audience=None,
     client_id=None,
     client_secret=None,
-    pose_model_id=None,
     camera_calibrations=None,
     min_keypoint_quality=None,
     min_num_keypoints=None,
@@ -1095,11 +1093,10 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
     )
     logger.info('Converted camera assignment IDs to camera device IDs for time segment starting at {}'.format(time_segment_start.isoformat()))
     logger.info('Reconstructing 3D poses for time segment starting at {}'.format(time_segment_start.isoformat()))
-    poses_3d_df = process_pose_data.reconstruct.reconstruct_poses_3d(
+    poses_3d_df = pose_connect.reconstruct.reconstruct_poses_3d(
         poses_2d_df=poses_2d_df_time_segment,
         pose_2d_id_column_name='pose_2d_id',
         pose_2d_ids_column_name='pose_2d_ids',
-        pose_model_id=pose_model_id,
         camera_calibrations=camera_calibrations,
         min_keypoint_quality=min_keypoint_quality,
         min_num_keypoints=min_num_keypoints,
@@ -1112,6 +1109,7 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
         pose_3d_limits=pose_3d_limits,
         room_x_limits=room_x_limits,
         room_y_limits=room_y_limits,
+        pose_model_name=None,
         pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
         pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
         include_track_labels=include_track_labels,
@@ -1284,7 +1282,7 @@ def generate_pose_tracks_3d_local_by_time_segment(
         )
         if len(poses_3d_df) == 0:
             continue
-        pose_tracks_3d =  process_pose_data.track_poses.update_pose_tracks_3d(
+        pose_tracks_3d =  pose_connect.track.update_pose_tracks_3d(
             poses_3d_df=poses_3d_df,
             pose_tracks_3d=pose_tracks_3d,
             max_match_distance=max_match_distance,
@@ -1457,7 +1455,7 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
             object_type='dataframe',
             pose_processing_subdirectory='pose_processing'
         )
-        poses_3d_new_df = process_pose_data.interpolate_pose_track(poses_3d_in_track_df)
+        poses_3d_new_df = pose_connect.track.interpolate_pose_track(poses_3d_in_track_df)
         if len(poses_3d_new_df) == 0:
             continue
         process_pose_data.local_io.write_data_local_by_time_segment(
@@ -1699,8 +1697,8 @@ def download_position_data_by_datapoint(
                     'z_position'
                 ])
             )
-            position_data_df = process_pose_data.identify.resample_uwb_data(
-                uwb_data_df=position_data_df,
+            position_data_df = pose_connect.identify.resample_sensor_data(
+                sensor_data_df=position_data_df,
                 id_field_names=[
                     'person_id'
                 ],
@@ -1770,8 +1768,8 @@ def download_position_data_by_datapoint(
             )
             if len(position_data_df) == 0:
                 continue
-            position_data_df = process_pose_data.identify.resample_uwb_data(
-                uwb_data_df=position_data_df,
+            position_data_df = pose_connect.identify.resample_sensor_data(
+                sensor_data_df=position_data_df,
                 id_field_names=[
                     'assignment_id',
                     'object_id',
@@ -2031,8 +2029,8 @@ def download_position_data_trays_by_datapoint(
                     'z_position'
                 ])
             )
-            position_data_df = process_pose_data.identify.resample_uwb_data(
-                uwb_data_df=position_data_df,
+            position_data_df = pose_connect.identify.resample_sensor_data(
+                sensor_data_df=position_data_df,
                 id_field_names=[
                     'tray_id',
                     'material_id'
@@ -2103,8 +2101,8 @@ def download_position_data_trays_by_datapoint(
             )
             if len(position_data_df) == 0:
                 continue
-            position_data_df = process_pose_data.identify.resample_uwb_data(
-                uwb_data_df=position_data_df,
+            position_data_df = pose_connect.identify.resample_sensor_data(
+                sensor_data_df=position_data_df,
                 id_field_names=[
                     'assignment_id',
                     'object_id',
@@ -2362,9 +2360,9 @@ def identify_pose_tracks_3d_local_by_segment(
         )
         # Identify poses
         if return_match_statistics:
-            pose_identification_time_segment_df, match_statistics_time_segment_df = process_pose_data.identify.identify_poses(
+            pose_identification_time_segment_df, match_statistics_time_segment_df = pose_connect.identify.identify_poses(
                 poses_3d_with_tracks_df=poses_3d_with_tracks_time_segment_df,
-                uwb_data_resampled_df=uwb_data_resampled_time_segment_df,
+                sensor_data_resampled_df=uwb_data_resampled_time_segment_df,
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
@@ -2372,9 +2370,9 @@ def identify_pose_tracks_3d_local_by_segment(
             )
             match_statistics_time_segment_df_list.append(match_statistics_time_segment_df)
         else:
-            pose_identification_time_segment_df = process_pose_data.identify.identify_poses(
+            pose_identification_time_segment_df = pose_connect.identify.identify_poses(
                 poses_3d_with_tracks_df=poses_3d_with_tracks_time_segment_df,
-                uwb_data_resampled_df=uwb_data_resampled_time_segment_df,
+                sensor_data_resampled_df=uwb_data_resampled_time_segment_df,
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
@@ -2384,7 +2382,7 @@ def identify_pose_tracks_3d_local_by_segment(
         # Add to list
         pose_identification_time_segment_df_list.append(pose_identification_time_segment_df)
     pose_identification_df = pd.concat(pose_identification_time_segment_df_list)
-    pose_track_identification_df = process_pose_data.identify.identify_pose_tracks(
+    pose_track_identification_df = pose_connect.identify.identify_pose_tracks(
         pose_identification_df=pose_identification_df
     )
     num_poses_df = pose_3d_ids_with_tracks_df.groupby('pose_track_3d_id').size().to_frame(name='num_poses')
@@ -3276,7 +3274,7 @@ def generate_pose_3d_limits(
         client_secret=client_secret
     )
     pose_model_name = pose_model.get('model_name')
-    pose_3d_limits = process_pose_data.reconstruct.pose_3d_limits_by_pose_model(
+    pose_3d_limits = pose_connect.reconstruct.pose_3d_limits_by_pose_model(
         room_x_limits=room_x_limits,
         room_y_limits=room_y_limits,
         pose_model_name=pose_model_name
