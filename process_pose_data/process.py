@@ -1457,7 +1457,7 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
             object_type='dataframe',
             pose_processing_subdirectory='pose_processing'
         )
-        poses_3d_new_df = process_pose_data.interpolate_pose_track(poses_3d_in_track_df)
+        poses_3d_new_df = pose_connect.track.interpolate_pose_track(poses_3d_in_track_df)
         if len(poses_3d_new_df) == 0:
             continue
         process_pose_data.local_io.write_data_local_by_time_segment(
