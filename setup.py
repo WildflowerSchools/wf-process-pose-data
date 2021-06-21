@@ -17,6 +17,7 @@ BASE_DEPENDENCIES = [
     'wf-cv-utils>=3.0.0',
     'wf-video-io>=1.0.0',
     'wf-geom-render>=0.3.0',
+    'pose-connect>=0.1.0',
     'pandas>=1.2.2',
     'numpy>=1.20.1',
     'networkx>=2.5',
@@ -59,7 +60,7 @@ setup(
     #          "COMMAND_NAME = MODULE_PATH:METHOD_NAME"
     #     ]
     # },
-    keywords=['pose estimation'],
+    keywords=['pose reconstruction', 'pose tracking'],
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
