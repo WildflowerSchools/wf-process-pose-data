@@ -2372,7 +2372,7 @@ def identify_pose_tracks_3d_local_by_segment(
         else:
             pose_identification_time_segment_df = pose_connect.identify.identify_poses(
                 poses_3d_with_tracks=poses_3d_with_tracks_time_segment_df,
-                sensor_data_resampled_df=uwb_data_resampled_time_segment_df,
+                sensor_data_resampled=uwb_data_resampled_time_segment_df,
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
