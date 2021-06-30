@@ -2189,7 +2189,7 @@ def identify_pose_tracks_3d_local_by_segment(
         )
         # Identify poses
         if return_match_statistics:
-            pose_identification_time_segment_df, match_statistics_time_segment_df = pose_connect.identify.identify_poses(
+            pose_identification_time_segment_df, match_statistics_time_segment_df = pose_connect.identify.generate_pose_identification(
                 poses_3d_with_tracks=poses_3d_with_tracks_time_segment_df,
                 sensor_data_resampled=uwb_data_resampled_time_segment_df,
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
@@ -2199,7 +2199,7 @@ def identify_pose_tracks_3d_local_by_segment(
             )
             match_statistics_time_segment_df_list.append(match_statistics_time_segment_df)
         else:
-            pose_identification_time_segment_df = pose_connect.identify.identify_poses(
+            pose_identification_time_segment_df = pose_connect.identify.generate_pose_identification(
                 poses_3d_with_tracks=poses_3d_with_tracks_time_segment_df,
                 sensor_data_resampled=uwb_data_resampled_time_segment_df,
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
@@ -2211,7 +2211,7 @@ def identify_pose_tracks_3d_local_by_segment(
         # Add to list
         pose_identification_time_segment_df_list.append(pose_identification_time_segment_df)
     pose_identification_df = pd.concat(pose_identification_time_segment_df_list)
-    pose_track_identification_df = pose_connect.identify.identify_pose_tracks(
+    pose_track_identification_df = pose_connect.identify.generate_pose_track_identification(
         pose_identification=pose_identification_df
     )
     num_poses_df = pose_3d_ids_with_tracks_df.groupby('pose_track_3d_id').size().to_frame(name='num_poses')
