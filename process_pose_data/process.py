@@ -831,6 +831,7 @@ def reconstruct_poses_3d_local_timestamp(
     poses_3d_df_timestamp = pose_connect.reconstruct.reconstruct_poses_3d_timestamp(
         poses_2d_timestamp=poses_2d_df_timestamp,
         camera_calibrations=camera_calibrations,
+        pose_3d_limits=pose_3d_limits,
         min_keypoint_quality=min_keypoint_quality,
         min_num_keypoints=min_num_keypoints,
         min_pose_quality=min_pose_quality,
@@ -839,7 +840,6 @@ def reconstruct_poses_3d_local_timestamp(
         pose_pair_score_distance_method=pose_pair_score_distance_method,
         pose_pair_score_pixel_distance_scale=pose_pair_score_pixel_distance_scale,
         pose_pair_score_summary_method=pose_pair_score_summary_method,
-        pose_3d_limits=pose_3d_limits,
         pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
         pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
         include_track_labels=include_track_labels,
@@ -1095,8 +1095,10 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
     logger.info('Reconstructing 3D poses for time segment starting at {}'.format(time_segment_start.isoformat()))
     poses_3d_df = pose_connect.reconstruct.reconstruct_poses_3d(
         poses_2d=poses_2d_df_time_segment,
-        pose_2d_id_column_name='pose_2d_id',
-        pose_2d_ids_column_name='pose_2d_ids',
+        pose_3d_limits=pose_3d_limits,
+        pose_model_name=None,
+        room_x_limits=room_x_limits,
+        room_y_limits=room_y_limits,
         camera_calibrations=camera_calibrations,
         min_keypoint_quality=min_keypoint_quality,
         min_num_keypoints=min_num_keypoints,
@@ -1106,13 +1108,11 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
         pose_pair_score_distance_method=pose_pair_score_distance_method,
         pose_pair_score_pixel_distance_scale=pose_pair_score_pixel_distance_scale,
         pose_pair_score_summary_method=pose_pair_score_summary_method,
-        pose_3d_limits=pose_3d_limits,
-        room_x_limits=room_x_limits,
-        room_y_limits=room_y_limits,
-        pose_model_name=None,
         pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
         pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
         include_track_labels=include_track_labels,
+        pose_2d_id_column_name='pose_2d_id',
+        pose_2d_ids_column_name='pose_2d_ids',
         progress_bar=progress_bar,
         notebook=notebook
     )
@@ -1455,7 +1455,9 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
             object_type='dataframe',
             pose_processing_subdirectory='pose_processing'
         )
-        poses_3d_new_df = pose_connect.track.interpolate_pose_track(poses_3d_in_track_df)
+        poses_3d_new_df = pose_connect.track.interpolate_pose_track(
+            pose_track_3d=poses_3d_in_track_df
+        )
         if len(poses_3d_new_df) == 0:
             continue
         process_pose_data.local_io.write_data_local_by_time_segment(
