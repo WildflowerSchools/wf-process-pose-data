@@ -4,4 +4,4 @@ from process_pose_data.viz_3d import *
 from process_pose_data.geom_render import *
 from process_pose_data.process import *
 
-__version__ = '4.1.0'
+__version__ = '4.1.1'
