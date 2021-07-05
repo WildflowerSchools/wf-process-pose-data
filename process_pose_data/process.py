@@ -938,8 +938,6 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
         pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
         pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
         include_track_labels=include_track_labels,
-        pose_2d_id_column_name='pose_2d_id',
-        pose_2d_ids_column_name='pose_2d_ids',
         progress_bar=progress_bar,
         notebook=notebook
     )
@@ -2672,8 +2670,7 @@ def overlay_pose_tracks_3d_uninterpolated_local(
         pose_processing_subdirectory=pose_processing_subdirectory
     )
     pose_tracks_3d_uninterpolated_df = process_pose_data.local_io.add_short_track_labels(
-        pose_tracks_3d_uninterpolated_df,
-        pose_track_3d_id_column_name='pose_track_3d_id'
+        pose_tracks_3d_uninterpolated_df
     )
     process_pose_data.overlay.overlay_poses(
         poses_df=pose_tracks_3d_uninterpolated_df,
@@ -2839,8 +2836,7 @@ def overlay_pose_tracks_3d_interpolated_local(
         pose_processing_subdirectory=pose_processing_subdirectory
     )
     pose_tracks_3d_interpolated_df = process_pose_data.local_io.add_short_track_labels(
-        pose_tracks_3d_interpolated_df,
-        pose_track_3d_id_column_name='pose_track_3d_id'
+        pose_tracks_3d_interpolated_df
     )
     process_pose_data.overlay.overlay_poses(
         poses_df=pose_tracks_3d_interpolated_df ,
