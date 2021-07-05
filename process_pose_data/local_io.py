@@ -932,10 +932,9 @@ def convert_pose_tracks_3d_to_df(
     return pose_3d_ids_with_tracks_df
 
 def add_short_track_labels(
-    poses_3d_with_tracks_df,
-    pose_track_3d_id_column_name='pose_track_3d_id'
+    poses_3d_with_tracks_df
 ):
-    pose_track_3d_id_index = poses_3d_with_tracks_df.groupby(pose_track_3d_id_column_name).apply(lambda x: x['timestamp'].min()).sort_values().index
+    pose_track_3d_id_index = poses_3d_with_tracks_df.groupby('pose_track_3d_id').apply(lambda x: x['timestamp'].min()).sort_values().index
     track_label_lookup = pd.DataFrame(
         range(1, len(pose_track_3d_id_index)+1),
         columns=['pose_track_3d_id_short'],
