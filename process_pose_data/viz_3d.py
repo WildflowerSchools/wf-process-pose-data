@@ -8,6 +8,7 @@ def convert_all_data_to_json(
     poses_3d_with_person_info_df,
     person_positions,
     tray_positions,
+    indent=2,
     output_path=None
 ):
     # Prepare identified 3D pose track data
@@ -68,14 +69,13 @@ def convert_all_data_to_json(
                 .to_dict(orient='records')
             )
         }
-    return data_dict
-    # poses_3d_with_person_info_json = json.dumps(data_dict, indent=2)
-    # if output_path is not None:
-    #     output_directory = os.path.dirname(output_path)
-    #     os.makedirs(output_directory, exist_ok=True)
-    #     with open(output_path, 'w') as fp:
-    #         fp.write(poses_3d_with_person_info_json)
-    # return poses_3d_with_person_info_json
+    all_data_json = json.dumps(data_dict, indent=indent)
+    if output_path is not None:
+        output_directory = os.path.dirname(output_path)
+        os.makedirs(output_directory, exist_ok=True)
+        with open(output_path, 'w') as fp:
+            fp.write(all_data_json)
+    return all_data_json
 
 def convert_3d_poses_with_person_info_to_json(
     poses_3d_with_person_info_df,
