@@ -8,6 +8,7 @@ def convert_all_data_to_json(
     poses_3d_with_person_info_df,
     person_positions,
     tray_positions,
+    tray_events=None,
     indent=2,
     output_path=None
 ):
@@ -32,6 +33,11 @@ def convert_all_data_to_json(
     person_positions = person_positions.where(pd.notnull(person_positions), None)
     # Prepare tray position data
     tray_positions = tray_positions.copy()
+    if tray_events is not None:
+        tray_positions = add_event_data_to_tray_positions(
+            tray_positions=tray_positions,
+            tray_events=tray_events
+        )
     tray_positions['sensor_coordinates'] = tray_positions['sensor_coordinates'].apply(lambda x: x.tolist())
     tray_positions = tray_positions.astype('object')
     tray_positions = tray_positions.where(pd.notnull(tray_positions), None)
