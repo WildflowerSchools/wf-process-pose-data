@@ -692,7 +692,6 @@ def fetch_tray_positions_local(
         'tray_name',
         'tray_part_number',
         'tray_serial_number',
-        'tray_name',
         'material_name',
         'material_transparent_classroom_id',
         'material_transparent_classroom_type',
