@@ -187,7 +187,7 @@ def fetch_2d_pose_data_alphapose_local_time_segment(
         carryover_poses.sort_values(['timestamp', 'assignment_id'], inplace=True)
     return current_poses, carryover_poses
 
-def fetch_all_data_json_json(
+def fetch_all_data_json(
     base_dir,
     environment_id,
     pose_track_3d_identification_inference_id,
