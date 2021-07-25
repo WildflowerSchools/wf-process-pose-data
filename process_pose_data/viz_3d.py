@@ -143,3 +143,29 @@ def convert_tray_positions_to_json(
         with open(output_path, 'w') as fp:
             fp.write(tray_positions_json)
     return tray_positions_json
+
+def add_event_data_to_tray_positions(
+    tray_positions,
+    tray_events
+):
+    tray_positions_with_event_data = tray_positions.copy()
+    tray_positions_with_event_data['tray_event'] = False
+    tray_positions_with_event_data['tray_event_type'] = None
+    for idx, event in tray_events.iterrows():
+        tray_positions_with_event_data.loc[
+            (
+                (tray_positions_with_event_data['timestamp'] >= event['start']) &
+                (tray_positions_with_event_data['timestamp'] <= event['end']) &
+                (tray_positions_with_event_data['tray_id'] == event['tray_id'])
+            ),
+            'tray_event'
+        ] = True
+        tray_positions_with_event_data.loc[
+            (
+                (tray_positions_with_event_data['timestamp'] >= event['start']) &
+                (tray_positions_with_event_data['timestamp'] <= event['end']) &
+                (tray_positions_with_event_data['tray_id'] == event['tray_id'])
+            ),
+            'tray_event_type'
+        ] = event['interaction_type']
+    return tray_positions_with_event_data
