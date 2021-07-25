@@ -193,6 +193,7 @@ def fetch_all_data_json(
     pose_track_3d_identification_inference_id,
     download_position_data_inference_id,
     download_position_data_trays_inference_id,
+    tray_events=None,
     start=None,
     end=None,
     pose_processing_subdirectory='pose_processing',
@@ -239,6 +240,7 @@ def fetch_all_data_json(
         poses_3d_with_person_info_df=poses_3d_with_person_info_df,
         person_positions=person_positions,
         tray_positions=tray_positions,
+        tray_events=tray_events,
         indent=indent,
         output_path=output_path
     )
