@@ -25,6 +25,8 @@ def convert_all_data_to_json(
         'person_id',
         'name',
         'short_name'
+        'anonymized_name',
+        'anonymized_short_name'
     ])
     # Prepare person position data
     person_positions = person_positions.copy()

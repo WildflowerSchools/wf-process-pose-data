@@ -586,6 +586,11 @@ def fetch_person_positions_local(
         'last_name',
         'nickname',
         'short_name',
+        'anonymized_name',
+        'anonymized_first_name',
+        'anonymized_last_name',
+        'anonymized_nickname',
+        'anonymized_short_name',
         'transparent_classroom_id'
     ])
     person_positions.sort_values(
