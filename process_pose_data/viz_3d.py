@@ -24,7 +24,9 @@ def convert_all_data_to_json(
         'pose_track_3d_id',
         'person_id',
         'name',
-        'short_name'
+        'short_name',
+        'anonymized_name',
+        'anonymized_short_name'
     ])
     # Prepare person position data
     person_positions = person_positions.copy()
