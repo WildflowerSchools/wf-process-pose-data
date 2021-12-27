@@ -417,7 +417,7 @@ def overlay_poses_timestamp(
                 pose_label = None
             image=poseconnect.overlay.overlay_pose_2d_image(
                 image=image,
-                keypoint_coordinates=keypoint_coordinates_2d,
+                keypoint_coordinates_2d=keypoint_coordinates_2d,
                 pose_label=pose_label,
                 draw_keypoint_connectors=draw_keypoint_connectors,
                 keypoint_connectors=keypoint_connectors,
@@ -531,7 +531,7 @@ def overlay_poses_camera_time_segment(
                 pose_label = None
             frame=poseconnect.overlay.overlay_pose_2d_image(
                 image=frame,
-                keypoint_coordinates=keypoint_coordinates_2d,
+                keypoint_coordinates_2d=keypoint_coordinates_2d,
                 pose_label=pose_label,
                 draw_keypoint_connectors=draw_keypoint_connectors,
                 keypoint_connectors=keypoint_connectors,
@@ -773,7 +773,7 @@ def visualize_3d_pose_reconstruction(
         # Draw projected 3D pose in one color
         image = poseconnect.overlay.overlay_pose_2d_image(
             image=image,
-            keypoint_coordinates=pose_3d_keypoint_coordinates_2d,
+            keypoint_coordinates_2d=pose_3d_keypoint_coordinates_2d,
             draw_keypoint_connectors=draw_keypoint_connectors,
             keypoint_connectors=keypoint_connectors,
             pose_label=None,
@@ -800,7 +800,7 @@ def visualize_3d_pose_reconstruction(
                 pose_2d_color = non_constituent_pose_2d_color
             image = poseconnect.overlay.overlay_pose_2d_image(
                 image=image,
-                keypoint_coordinates=pose_2d['keypoint_coordinates_2d'],
+                keypoint_coordinates_2d=pose_2d['keypoint_coordinates_2d'],
                 draw_keypoint_connectors=draw_keypoint_connectors,
                 keypoint_connectors=keypoint_connectors,
                 pose_label=None,
@@ -973,7 +973,7 @@ def draw_poses_2d_timestamp_camera_opencv(
     for pose_2d_id, row in df.iterrows():
         new_image = poseconnect.overlay.overlay_pose_2d_image(
             image=new_image,
-            keypoint_coordinates=row['keypoint_coordinates_2d'],
+            keypoint_coordinates_2d=row['keypoint_coordinates_2d'],
             draw_keypoint_connectors=draw_keypoint_connectors,
             keypoint_connectors=keypoint_connectors,
             pose_label=pose_label_map[pose_2d_id],
@@ -1128,7 +1128,7 @@ def draw_poses_3d_timestamp_camera_opencv(
             )
             new_image=poseconnect.overlay.overlay_pose_2d_image(
                 image=new_image,
-                keypoint_coordinates=keypoint_coordinates_2d,
+                keypoint_coordinates_2d=keypoint_coordinates_2d,
                 draw_keypoint_connectors=draw_keypoint_connectors,
                 keypoint_connectors=keypoint_connectors,
                 pose_label=row['match_group_label'],
