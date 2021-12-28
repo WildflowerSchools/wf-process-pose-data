@@ -533,7 +533,7 @@ def overlay_poses_camera_time_segment(
                 pose_label = None
             frame=poseconnect.overlay.overlay_pose_image(
                 keypoint_coordinates=keypoint_coordinates_2d,
-                image=image,
+                image=frame,
                 pose_type='2d',
                 camera_calibration=None,
                 pose_label=pose_label,
