@@ -415,9 +415,11 @@ def overlay_poses_timestamp(
                 pose_label = row[pose_label_column]
             else:
                 pose_label = None
-            image=poseconnect.overlay.overlay_pose_2d_image(
-                keypoint_coordinates_2d=keypoint_coordinates_2d,
+            image=poseconnect.overlay.overlay_pose_image(
+                keypoint_coordinates=keypoint_coordinates_2d,
                 image=image,
+                pose_type='2d',
+                camera_calibration=None,
                 pose_label=pose_label,
                 draw_keypoint_connectors=draw_keypoint_connectors,
                 keypoint_connectors=keypoint_connectors,
@@ -529,9 +531,11 @@ def overlay_poses_camera_time_segment(
                 pose_label = row[pose_label_column]
             else:
                 pose_label = None
-            frame=poseconnect.overlay.overlay_pose_2d_image(
-                keypoint_coordinates_2d=keypoint_coordinates_2d,
-                image=frame,
+            frame=poseconnect.overlay.overlay_pose_image(
+                keypoint_coordinates=keypoint_coordinates_2d,
+                image=image,
+                pose_type='2d',
+                camera_calibration=None,
                 pose_label=pose_label,
                 draw_keypoint_connectors=draw_keypoint_connectors,
                 keypoint_connectors=keypoint_connectors,
@@ -771,9 +775,11 @@ def visualize_3d_pose_reconstruction(
         # Load image into memory
         image = cv.imread(image_metadata_dict.get(camera_id).get('image_local_path'))
         # Draw projected 3D pose in one color
-        image = poseconnect.overlay.overlay_pose_2d_image(
-            keypoint_coordinates_2d=pose_3d_keypoint_coordinates_2d,
+        image = poseconnect.overlay.overlay_pose_image(
+            keypoint_coordinates=pose_3d_keypoint_coordinates_2d,
             image=image,
+            pose_type='2d',
+            camera_calibration=None,
             draw_keypoint_connectors=draw_keypoint_connectors,
             keypoint_connectors=keypoint_connectors,
             pose_label=None,
@@ -798,9 +804,11 @@ def visualize_3d_pose_reconstruction(
                 pose_2d_color = constituent_pose_2d_color
             else:
                 pose_2d_color = non_constituent_pose_2d_color
-            image = poseconnect.overlay.overlay_pose_2d_image(
-                keypoint_coordinates_2d=pose_2d['keypoint_coordinates_2d'],
+            image = poseconnect.overlay.overlay_pose_image(
+                keypoint_coordinates=pose_2d['keypoint_coordinates_2d'],
                 image=image,
+                pose_type='2d',
+                camera_calibration=None,
                 draw_keypoint_connectors=draw_keypoint_connectors,
                 keypoint_connectors=keypoint_connectors,
                 pose_label=None,
@@ -971,10 +979,11 @@ def draw_poses_2d_timestamp_camera_opencv(
         background_image = cv_utils.fetch_image_from_local_drive(image_local_path)
     new_image = background_image
     for pose_2d_id, row in df.iterrows():
-        new_image = poseconnect.overlay.overlay_pose_2d_image(
-            keypoint_coordinates_2d=row['keypoint_coordinates_2d'],
+        new_image = poseconnect.overlay.overlay_pose_image(
+            keypoint_coordinates=row['keypoint_coordinates_2d'],
             image=new_image,
-            draw_keypoint_connectors=draw_keypoint_connectors,
+            pose_type='2d',
+            camera_calibration=None,
             keypoint_connectors=keypoint_connectors,
             pose_label=pose_label_map[pose_2d_id],
             pose_color=pose_color_map[pose_2d_id],
@@ -1126,9 +1135,11 @@ def draw_poses_3d_timestamp_camera_opencv(
                     [camera_calibration['image_width'], camera_calibration['image_height']]
                 ]
             )
-            new_image=poseconnect.overlay.overlay_pose_2d_image(
-                keypoint_coordinates_2d=keypoint_coordinates_2d,
+            new_image=poseconnect.overlay.overlay_pose_image(
+                keypoint_coordinates=keypoint_coordinates_2d,
                 image=new_image,
+                pose_type='2d',
+                camera_calibration=None,
                 draw_keypoint_connectors=draw_keypoint_connectors,
                 keypoint_connectors=keypoint_connectors,
                 pose_label=row['match_group_label'],
@@ -1279,91 +1290,95 @@ def draw_poses_2d_timestamp_camera(
     fig_width_inches=10.5,
     fig_height_inches=8
 ):
-    timestamps = df['timestamp'].unique()
-    camera_ids = df['camera_id'].unique()
-    if len(timestamps) > 1:
-        raise ValueError('More than one timestamp in data frame')
-    if len(camera_ids) > 1:
-        raise ValueError('More than one camera in data frame')
-    timestamp = timestamps[0]
-    camera_id = camera_ids[0]
-    camera_identifier = camera_id
-    if display_camera_name:
-        if camera_name is None:
-            camera_name = honeycomb_io.fetch_camera_names([camera_id])[camera_id]
-        camera_identifier = camera_name
-    fig_suptitle = '{} ({})'.format(
-        camera_identifier,
-        timestamp.strftime(plot_title_datetime_format)
-    )
-    save_filename = '{}_{}_{}.{}'.format(
-        filename_prefix,
-        slugify.slugify(camera_identifier),
-        timestamp.strftime(filename_datetime_format),
-        filename_extension
-    )
-    df = df.sort_index()
-    pose_2d_ids = df.index.tolist()
-    if pose_label_map is None:
-        if 'track_label_2d' in df.columns:
-            pose_labels = df['track_label_2d'].values.tolist()
-        elif len(pose_2d_ids) <= 26:
-            pose_labels = string.ascii_uppercase[:len(pose_2d_ids)]
-        else:
-            pose_labels = range(len(pose_2d_ids))
-        pose_label_map = dict(zip(pose_2d_ids, pose_labels))
-    if pose_color_map is None:
-        pose_colors = sns.color_palette('husl', n_colors=len(pose_2d_ids))
-        pose_color_map = dict(zip(pose_2d_ids, pose_colors))
-    if draw_keypoint_connectors:
-        if keypoint_connectors is None:
-            pose_model = honeycomb_io.fetch_pose_model(
-                pose_2d_id=pose_2d_ids[0]
-            )
-            keypoint_connectors = pose_model.get('keypoint_connectors')
-    for pose_2d_id, row in df.iterrows():
-        poseconnect.overlay.overlay_pose_2d_image(
-            keypoint_coordinates_2d=row['keypoint_coordinates_2d'],
-            draw_keypoint_connectors=draw_keypoint_connectors,
-            keypoint_connectors=keypoint_connectors,
-            pose_label=pose_label_map[pose_2d_id],
-            pose_color=pose_color_map[pose_2d_id],
-            keypoint_alpha=keypoint_alpha,
-            keypoint_connector_alpha=keypoint_connector_alpha,
-            keypoint_connector_linewidth=keypoint_connector_linewidth,
-            pose_label_color=pose_label_color,
-            pose_label_background_alpha=pose_label_background_alpha,
-            pose_label_boxstyle=pose_label_boxstyle
-        )
-    if show_background_image:
-        if background_image is None:
-            image_metadata = video_io.fetch_images(
-                image_timestamps = [timestamp.to_pydatetime()],
-                camera_device_ids=[camera_id]
-            )
-            image_local_path = image_metadata[0]['image_local_path']
-            background_image = cv_utils.fetch_image_from_local_drive(image_local_path)
-        cv_utils.draw_background_image(
-            image=background_image,
-            alpha=background_image_alpha
-        )
-    cv_utils.format_2d_image_plot(
-        image_size=image_size,
-        show_axes=show_axes
-    )
-    fig = plt.gcf()
-    fig.suptitle(fig_suptitle)
-    fig.set_size_inches(fig_width_inches, fig_height_inches)
-    # Show plot
-    if show:
-        plt.show()
-    # Save plot
-    if save:
-        path = os.path.join(
-            save_directory,
-            save_filename
-        )
-        fig.savefig(path)
+    raise NotImplementedError('This function has not been reimplemented using new API')
+    # timestamps = df['timestamp'].unique()
+    # camera_ids = df['camera_id'].unique()
+    # if len(timestamps) > 1:
+    #     raise ValueError('More than one timestamp in data frame')
+    # if len(camera_ids) > 1:
+    #     raise ValueError('More than one camera in data frame')
+    # timestamp = timestamps[0]
+    # camera_id = camera_ids[0]
+    # camera_identifier = camera_id
+    # if display_camera_name:
+    #     if camera_name is None:
+    #         camera_name = honeycomb_io.fetch_camera_names([camera_id])[camera_id]
+    #     camera_identifier = camera_name
+    # fig_suptitle = '{} ({})'.format(
+    #     camera_identifier,
+    #     timestamp.strftime(plot_title_datetime_format)
+    # )
+    # save_filename = '{}_{}_{}.{}'.format(
+    #     filename_prefix,
+    #     slugify.slugify(camera_identifier),
+    #     timestamp.strftime(filename_datetime_format),
+    #     filename_extension
+    # )
+    # df = df.sort_index()
+    # pose_2d_ids = df.index.tolist()
+    # if pose_label_map is None:
+    #     if 'track_label_2d' in df.columns:
+    #         pose_labels = df['track_label_2d'].values.tolist()
+    #     elif len(pose_2d_ids) <= 26:
+    #         pose_labels = string.ascii_uppercase[:len(pose_2d_ids)]
+    #     else:
+    #         pose_labels = range(len(pose_2d_ids))
+    #     pose_label_map = dict(zip(pose_2d_ids, pose_labels))
+    # if pose_color_map is None:
+    #     pose_colors = sns.color_palette('husl', n_colors=len(pose_2d_ids))
+    #     pose_color_map = dict(zip(pose_2d_ids, pose_colors))
+    # if draw_keypoint_connectors:
+    #     if keypoint_connectors is None:
+    #         pose_model = honeycomb_io.fetch_pose_model(
+    #             pose_2d_id=pose_2d_ids[0]
+    #         )
+    #         keypoint_connectors = pose_model.get('keypoint_connectors')
+    # for pose_2d_id, row in df.iterrows():
+    #     poseconnect.overlay.overlay_pose_2d_image(
+    #         keypoint_coordinates=row['keypoint_coordinates_2d'],
+    #         image=None,
+    #         pose_type='2d',
+    #         camera_calibration=None,
+    #         draw_keypoint_connectors=draw_keypoint_connectors,
+    #         keypoint_connectors=keypoint_connectors,
+    #         pose_label=pose_label_map[pose_2d_id],
+    #         pose_color=pose_color_map[pose_2d_id],
+    #         keypoint_alpha=keypoint_alpha,
+    #         keypoint_connector_alpha=keypoint_connector_alpha,
+    #         keypoint_connector_linewidth=keypoint_connector_linewidth,
+    #         pose_label_color=pose_label_color,
+    #         pose_label_background_alpha=pose_label_background_alpha,
+    #         pose_label_boxstyle=pose_label_boxstyle
+    #     )
+    # if show_background_image:
+    #     if background_image is None:
+    #         image_metadata = video_io.fetch_images(
+    #             image_timestamps = [timestamp.to_pydatetime()],
+    #             camera_device_ids=[camera_id]
+    #         )
+    #         image_local_path = image_metadata[0]['image_local_path']
+    #         background_image = cv_utils.fetch_image_from_local_drive(image_local_path)
+    #     cv_utils.draw_background_image(
+    #         image=background_image,
+    #         alpha=background_image_alpha
+    #     )
+    # cv_utils.format_2d_image_plot(
+    #     image_size=image_size,
+    #     show_axes=show_axes
+    # )
+    # fig = plt.gcf()
+    # fig.suptitle(fig_suptitle)
+    # fig.set_size_inches(fig_width_inches, fig_height_inches)
+    # # Show plot
+    # if show:
+    #     plt.show()
+    # # Save plot
+    # if save:
+    #     path = os.path.join(
+    #         save_directory,
+    #         save_filename
+    #     )
+    #     fig.savefig(path)
 
 def draw_poses_3d_timestamp_camera(
     df,
