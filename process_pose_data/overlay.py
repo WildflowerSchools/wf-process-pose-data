@@ -52,9 +52,9 @@ def overlay_poses(
     keypoint_connector_alpha=0.6,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.6,
+    pose_label_box_alpha=0.6,
     pose_label_font_scale=1.5,
-    pose_label_line_width=1,
+    pose_label_text_line_width=1,
     output_directory='./video_overlays',
     output_filename_prefix='poses',
     output_filename_datetime_format='%Y%m%d_%H%M%S_%f',
@@ -145,9 +145,9 @@ def overlay_poses(
         keypoint_connector_alpha=keypoint_connector_alpha,
         keypoint_connector_linewidth=keypoint_connector_linewidth,
         pose_label_color=pose_label_color,
-        pose_label_background_alpha=pose_label_background_alpha,
+        pose_label_box_alpha=pose_label_box_alpha,
         pose_label_font_scale=pose_label_font_scale,
-        pose_label_line_width=pose_label_line_width,
+        pose_label_text_line_width=pose_label_text_line_width,
         output_directory=output_directory,
         output_filename_prefix=output_filename_prefix,
         output_filename_datetime_format=output_filename_datetime_format,
@@ -304,9 +304,9 @@ def overlay_poses_timestamp(
     keypoint_connector_alpha=0.6,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.6,
+    pose_label_box_alpha=0.6,
     pose_label_font_scale=1.5,
-    pose_label_line_width=1,
+    pose_label_text_line_width=1,
     output_directory='./image_overlays',
     output_filename_prefix='poses',
     output_filename_datetime_format='%Y%m%d_%H%M%S_%f',
@@ -427,7 +427,7 @@ def overlay_poses_timestamp(
                 keypoint_connector_alpha=keypoint_connector_alpha,
                 keypoint_connector_linewidth=keypoint_connector_linewidth,
                 pose_label_font_scale=pose_label_font_scale,
-                pose_label_line_width=pose_label_line_width
+                pose_label_text_line_width=pose_label_text_line_width
             )
         output_path = os.path.join(
             output_directory,
@@ -453,9 +453,9 @@ def overlay_poses_camera_time_segment(
     keypoint_connector_alpha=0.6,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.6,
+    pose_label_box_alpha=0.6,
     pose_label_font_scale=1.5,
-    pose_label_line_width=1,
+    pose_label_text_line_width=1,
     output_directory='.',
     output_filename_prefix='poses_overlay',
     output_filename_datetime_format='%Y%m%d_%H%M%S_%f',
@@ -543,7 +543,7 @@ def overlay_poses_camera_time_segment(
                 keypoint_connector_alpha=keypoint_connector_alpha,
                 keypoint_connector_linewidth=keypoint_connector_linewidth,
                 pose_label_font_scale=pose_label_font_scale,
-                pose_label_line_width=pose_label_line_width
+                pose_label_text_line_width=pose_label_text_line_width
             )
         video_output.write_frame(frame)
         if progress_bar:
@@ -855,9 +855,9 @@ def draw_poses_2d_timestamp_camera_pair_opencv(
     keypoint_connector_alpha=0.6,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.6,
+    pose_label_box_alpha=0.6,
     pose_label_font_scale=1.5,
-    pose_label_line_width=1,
+    pose_label_text_line_width=1,
     show=True,
     fig_width_inches=10.5,
     fig_height_inches=8
@@ -917,7 +917,7 @@ def draw_poses_2d_timestamp_camera_pair_opencv(
             keypoint_connector_alpha=keypoint_connector_alpha,
             keypoint_connector_linewidth=keypoint_connector_linewidth,
             pose_label_color=pose_label_color,
-            pose_label_background_alpha=pose_label_background_alpha,
+            pose_label_box_alpha=pose_label_box_alpha,
             pose_label_font_scale=pose_label_font_scale,
             show=show,
             fig_width_inches=fig_width_inches,
@@ -935,9 +935,9 @@ def draw_poses_2d_timestamp_camera_opencv(
     keypoint_connector_alpha=0.6,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.6,
+    pose_label_box_alpha=0.6,
     pose_label_font_scale=1.5,
-    pose_label_line_width=1,
+    pose_label_text_line_width=1,
     show=True,
     fig_width_inches=10.5,
     fig_height_inches=8
@@ -991,9 +991,9 @@ def draw_poses_2d_timestamp_camera_opencv(
             keypoint_connector_alpha=keypoint_connector_alpha,
             keypoint_connector_linewidth=keypoint_connector_linewidth,
             pose_label_color=pose_label_color,
-            pose_label_background_alpha=pose_label_background_alpha,
+            pose_label_box_alpha=pose_label_box_alpha,
             pose_label_font_scale=pose_label_font_scale,
-            pose_label_line_width=pose_label_line_width
+            pose_label_text_line_width=pose_label_text_line_width
         )
     # Show plot
     if show:
@@ -1080,7 +1080,7 @@ def draw_poses_3d_timestamp_camera_opencv(
     keypoint_connector_alpha=0.6,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.6,
+    pose_label_box_alpha=0.6,
     show=True,
     fig_width_inches=10.5,
     fig_height_inches=8
@@ -1148,7 +1148,7 @@ def draw_poses_3d_timestamp_camera_opencv(
                 keypoint_connector_alpha=keypoint_connector_alpha,
                 keypoint_connector_linewidth=keypoint_connector_linewidth,
                 pose_label_color=pose_label_color,
-                pose_label_background_alpha=pose_label_background_alpha
+                pose_label_box_alpha=pose_label_box_alpha
             )
             # Show plot
         if show:
@@ -1168,7 +1168,7 @@ def draw_poses_2d_timestamp_camera_pair(
     keypoint_connector_alpha=0.3,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.5,
+    pose_label_box_alpha=0.5,
     pose_label_boxstyle='circle',
     image_size=None,
     show_axes=False,
@@ -1241,7 +1241,7 @@ def draw_poses_2d_timestamp_camera_pair(
             keypoint_connector_alpha=keypoint_connector_alpha,
             keypoint_connector_linewidth=keypoint_connector_linewidth,
             pose_label_color=pose_label_color,
-            pose_label_background_alpha=pose_label_background_alpha,
+            pose_label_box_alpha=pose_label_box_alpha,
             pose_label_boxstyle=pose_label_boxstyle,
             image_size=image_size,
             show_axes=show_axes,
@@ -1271,7 +1271,7 @@ def draw_poses_2d_timestamp_camera(
     keypoint_connector_alpha=0.3,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.5,
+    pose_label_box_alpha=0.5,
     pose_label_boxstyle='circle',
     image_size=None,
     show_axes=False,
@@ -1347,7 +1347,7 @@ def draw_poses_2d_timestamp_camera(
     #         keypoint_connector_alpha=keypoint_connector_alpha,
     #         keypoint_connector_linewidth=keypoint_connector_linewidth,
     #         pose_label_color=pose_label_color,
-    #         pose_label_background_alpha=pose_label_background_alpha,
+    #         pose_label_box_alpha=pose_label_box_alpha,
     #         pose_label_boxstyle=pose_label_boxstyle
     #     )
     # if show_background_image:
@@ -1392,7 +1392,7 @@ def draw_poses_3d_timestamp_camera(
     keypoint_connector_alpha=0.3,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.5,
+    pose_label_box_alpha=0.5,
     pose_label_boxstyle='circle',
     background_image_alpha=0.4,
     plot_title_datetime_format='%m/%d/%Y %H:%M:%S.%f',
@@ -1493,7 +1493,7 @@ def draw_poses_3d_timestamp_camera(
                 keypoint_connector_alpha=keypoint_connector_alpha,
                 keypoint_connector_linewidth=keypoint_connector_linewidth,
                 pose_label_color=pose_label_color,
-                pose_label_background_alpha=pose_label_background_alpha,
+                pose_label_box_alpha=pose_label_box_alpha,
                 pose_label_boxstyle=pose_label_boxstyle
             )
         ax.axis(
@@ -1529,7 +1529,7 @@ def draw_poses_3d_consecutive_timestamps(
     keypoint_connector_alpha=0.3,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.5,
+    pose_label_box_alpha=0.5,
     pose_label_boxstyle='circle',
     background_image_alpha=0.4,
     plot_title_datetime_format='%m/%d/%Y %H:%M:%S.%f',
@@ -1609,7 +1609,7 @@ def draw_poses_3d_consecutive_timestamps(
                     keypoint_connector_alpha=keypoint_connector_alpha,
                     keypoint_connector_linewidth=keypoint_connector_linewidth,
                     pose_label_color=pose_label_color,
-                    pose_label_background_alpha=pose_label_background_alpha,
+                    pose_label_box_alpha=pose_label_box_alpha,
                     pose_label_boxstyle=pose_label_boxstyle
                 )
             axes[axis_index].axis(
@@ -1649,7 +1649,7 @@ def draw_pose_2d(
     keypoint_connector_alpha=0.3,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.5,
+    pose_label_box_alpha=0.5,
     pose_label_boxstyle='circle'
 ):
     keypoint_coordinates = np.asarray(keypoint_coordinates).reshape((-1, 2))
@@ -1684,7 +1684,7 @@ def draw_pose_2d(
             pose_label,
             color=pose_label_color,
             bbox={
-                'alpha': pose_label_background_alpha,
+                'alpha': pose_label_box_alpha,
                 'facecolor': plot_color,
                 'edgecolor': 'none',
                 'boxstyle': pose_label_boxstyle
@@ -1707,7 +1707,7 @@ def visualize_pose_pair(
     centroid_color='red',
     centroid_alpha=1.0,
     pose_label_background_color='red',
-    pose_label_background_alpha=1.0,
+    pose_label_box_alpha=1.0,
     pose_label_color='white',
     pose_label_boxstyle='circle',
     background_image_alpha=0.4,
@@ -1797,7 +1797,7 @@ def visualize_pose_pair(
                 pose_pair.get('track_label_2d_' + suffix),
                 color=pose_label_color,
                 bbox={
-                    'alpha': pose_label_background_alpha,
+                    'alpha': pose_label_box_alpha,
                     'facecolor': pose_label_background_color,
                     'edgecolor': 'none',
                     'boxstyle': pose_label_boxstyle
