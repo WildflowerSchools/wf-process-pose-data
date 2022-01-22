@@ -69,6 +69,7 @@ def overlay_poses(
     segment_progress_bar=False,
     notebook=False
 ):
+    logger.info('Detecting whether poses are 2D or 3D')
     poses_df_columns = poses_df.columns.tolist()
     if 'keypoint_coordinates_3d' in poses_df_columns and 'camera_id' not in poses_df_columns:
         logger.info('Poses appear to be 3D poses. Projecting into each camera view')
@@ -81,6 +82,7 @@ def overlay_poses(
         return
     else:
         raise ValueError('Cannot parse pose dataframe')
+    logger.info('Fetching source videos from local drive')
     video_metadata_with_local_paths = video_io.fetch_videos(
         start=start,
         end=end,
@@ -103,6 +105,10 @@ def overlay_poses(
         local_video_directory=local_video_directory,
         video_filename_extension=video_filename_extension
     )
+    logger.info('Fetched {} videos'.format(
+        len(video_metadata_with_local_paths)
+    ))
+    logger.info('Converting flat video metadata list to dictionary')
     video_metadata_dict = dict()
     for datum in video_metadata_with_local_paths:
         camera_id = datum.get('device_id')
@@ -110,30 +116,21 @@ def overlay_poses(
         if camera_id not in video_metadata_dict.keys():
             video_metadata_dict[camera_id] = dict()
         video_metadata_dict[camera_id][video_timestamp] = datum
+    logger.info('Fetching camera names')
     camera_ids = list(video_metadata_dict.keys())
     camera_name_dict = honeycomb_io.fetch_camera_names(
         camera_ids
     )
-    for camera_id in video_metadata_dict.keys():
-        video_metadata_dict[camera_id] = OrderedDict(sorted(video_metadata_dict[camera_id].items()))
-        for video_timestamp in video_metadata_dict[camera_id].keys():
-            video_metadata_dict[camera_id][video_timestamp]['video_output_path'] = os.path.join(
-                output_directory,
-                '{}_{}_{}.{}'.format(
-                    output_filename_prefix,
-                    video_timestamp.strftime(output_filename_datetime_format),
-                    slugify.slugify(camera_name_dict[camera_id]),
-                    output_filename_extension
-                )
-            )
     if pose_type=='3d':
         if camera_calibrations is None:
+            logger.info('Fetching camera calibrations')
             camera_calibrations = honeycomb_io.fetch_camera_calibrations(
                 camera_ids,
                 start=start,
                 end=end
             )
     if pose_model_id is not None:
+        logger.info('Fetching pose model')
         pose_model = honeycomb_io.fetch_pose_model_by_pose_model_id(
             pose_model_id
         )
@@ -143,6 +140,35 @@ def overlay_poses(
         draw_keypoint_connectors = True
     else:
         draw_keypoint_connectors = False
+    logger.info('Processing video metadata')
+    overlay_poses_video_args_list = list()
+    for camera_id in camera_ids:
+        logger.info('Processing video metadata for camera {}'.format(camera_name_dict[camera_id]))
+        video_metadata_dict[camera_id] = OrderedDict(sorted(video_metadata_dict[camera_id].items()))
+        video_timestamps = video_metadata_dict[camera_id].keys()
+        for video_timestamp in video_timestamps:
+            # Add an extra second to capture extra frames in video
+            poses_time_segment_df = poses_df.loc[
+                (poses_df['timestamp'] >= video_timestamp ) &
+                (poses_df['timestamp'] < video_timestamp + datetime.timedelta(seconds=11))
+            ].copy()
+            video_metadata_dict[camera_id][video_timestamp]['video_output_path'] = os.path.join(
+                output_directory,
+                '{}_{}_{}.{}'.format(
+                    output_filename_prefix,
+                    video_timestamp.strftime(output_filename_datetime_format),
+                    slugify.slugify(camera_name_dict[camera_id]),
+                    output_filename_extension
+                )
+            )
+            overlay_poses_video_args_list.append({
+                'poses': poses_time_segment_df,
+                'video_input_path': video_metadata_dict[camera_id][video_timestamp]['video_local_path'],
+                'video_start_time': video_timestamp,
+                'camera_id': camera_id,
+                'video_output_path': video_metadata_dict[camera_id][video_timestamp]['video_output_path']
+            })
+    logger.info('Batch processing videos')
     overlay_poses_video_batch_partial = functools.partial(
         overlay_poses_video_batch,
         pose_type=pose_type,
@@ -172,23 +198,6 @@ def overlay_poses(
         progress_bar=segment_progress_bar,
         notebook=notebook
     )
-    overlay_poses_video_args_list = list()
-    for camera_id in camera_ids:
-        logger.info('Processing video metadata for camera {}'.format(camera_name_dict[camera_id]))
-        video_timestamps = video_metadata_dict[camera_id].keys()
-        for video_timestamp in video_timestamps:
-            # Add an extra second to capture extra frames in video
-            poses_time_segment_df = poses_df.loc[
-                (poses_df['timestamp'] >= video_timestamp ) &
-                (poses_df['timestamp'] < video_timestamp + datetime.timedelta(seconds=11))
-            ].copy()
-            overlay_poses_video_args_list.append({
-                'poses': poses_time_segment_df,
-                'video_input_path': video_metadata_dict[camera_id][video_timestamp]['video_local_path'],
-                'video_start_time': video_timestamp,
-                'camera_id': camera_id,
-                'video_output_path': video_metadata_dict[camera_id][video_timestamp]['video_output_path']
-            })
     if parallel:
         logger.info('Attempting to launch parallel processes')
         if num_parallel_processes is None:
@@ -241,6 +250,7 @@ def overlay_poses(
                 overlay_poses_video_args_list
             ))
     if concatenate_videos:
+        logger.info('Concatenating videos for each camera')
         for camera_id in video_metadata_dict.keys():
             video_timestamps = list(video_metadata_dict[camera_id].keys())
             output_paths = [datum['video_output_path'] for datum in video_metadata_dict[camera_id].values()]
