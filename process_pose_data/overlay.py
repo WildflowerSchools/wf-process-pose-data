@@ -198,6 +198,7 @@ def overlay_poses(
         progress_bar=segment_progress_bar,
         notebook=notebook
     )
+    os.makedirs(output_directory, exist_ok=True)
     if parallel:
         logger.info('Attempting to launch parallel processes')
         if num_parallel_processes is None:
