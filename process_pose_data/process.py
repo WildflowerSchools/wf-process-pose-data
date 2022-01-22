@@ -2587,9 +2587,9 @@ def overlay_pose_tracks_3d_uninterpolated_local(
     keypoint_connector_alpha=0.6,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.6,
+    pose_label_box_alpha=0.6,
     pose_label_font_scale=1.5,
-    pose_label_line_width=1,
+    pose_label_text_line_width=1,
     output_filename_datetime_format='%Y%m%d_%H%M%S_%f',
     output_filename_extension='avi',
     output_fourcc_string='XVID',
@@ -2647,9 +2647,9 @@ def overlay_pose_tracks_3d_uninterpolated_local(
         keypoint_connector_alpha (float): Alpha value for keypoint connectors (default is 0.6)
         keypoint_connector_linewidth (float): Line width for keypoint connectors (default is 3.0)
         pose_label_color (str): Color for pose label text (default is 'white')
-        pose_label_background_alpha (float): Alpha value for pose label background (default is 0.6)
+        pose_label_box_alpha (float): Alpha value for pose label background (default is 0.6)
         pose_label_font_scale (float): Font scale for pose label (default is 1.5)
-        pose_label_line_width (float): Line width for pose label text (default is 1.0)
+        pose_label_text_line_width (float): Line width for pose label text (default is 1.0)
         output_filename_datetime_format (str): Datetime format for output filename (default is \'%Y%m%d_%H%M%S_%f\')
         output_filename_extension (str): Filename extension for output (determines file format) (default is \'avi\')
         output_fourcc_string (str): FOURCC code for output format (default is \'XVID\')
@@ -2703,9 +2703,9 @@ def overlay_pose_tracks_3d_uninterpolated_local(
         keypoint_connector_alpha=keypoint_connector_alpha,
         keypoint_connector_linewidth=keypoint_connector_linewidth,
         pose_label_color=pose_label_color,
-        pose_label_background_alpha=pose_label_background_alpha,
+        pose_label_box_alpha=pose_label_box_alpha,
         pose_label_font_scale=pose_label_font_scale,
-        pose_label_line_width=pose_label_line_width,
+        pose_label_text_line_width=pose_label_text_line_width,
         output_directory=output_directory,
         output_filename_prefix=output_filename_prefix,
         output_filename_datetime_format=output_filename_datetime_format,
@@ -2753,9 +2753,9 @@ def overlay_pose_tracks_3d_interpolated_local(
     keypoint_connector_alpha=0.6,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.6,
+    pose_label_box_alpha=0.6,
     pose_label_font_scale=1.5,
-    pose_label_line_width=1,
+    pose_label_text_line_width=1,
     output_filename_datetime_format='%Y%m%d_%H%M%S_%f',
     output_filename_extension='avi',
     output_fourcc_string='XVID',
@@ -2813,9 +2813,9 @@ def overlay_pose_tracks_3d_interpolated_local(
         keypoint_connector_alpha (float): Alpha value for keypoint connectors (default is 0.6)
         keypoint_connector_linewidth (float): Line width for keypoint connectors (default is 3.0)
         pose_label_color (str): Color for pose label text (default is 'white')
-        pose_label_background_alpha (float): Alpha value for pose label background (default is 0.6)
+        pose_label_box_alpha (float): Alpha value for pose label background (default is 0.6)
         pose_label_font_scale (float): Font scale for pose label (default is 1.5)
-        pose_label_line_width (float): Line width for pose label text (default is 1.0)
+        pose_label_text_line_width (float): Line width for pose label text (default is 1.0)
         output_filename_datetime_format (str): Datetime format for output filename (default is \'%Y%m%d_%H%M%S_%f\')
         output_filename_extension (str): Filename extension for output (determines file format) (default is \'avi\')
         output_fourcc_string (str): FOURCC code for output format (default is \'XVID\')
@@ -2869,9 +2869,9 @@ def overlay_pose_tracks_3d_interpolated_local(
         keypoint_connector_alpha=keypoint_connector_alpha,
         keypoint_connector_linewidth=keypoint_connector_linewidth,
         pose_label_color=pose_label_color,
-        pose_label_background_alpha=pose_label_background_alpha,
+        pose_label_box_alpha=pose_label_box_alpha,
         pose_label_font_scale=pose_label_font_scale,
-        pose_label_line_width=pose_label_line_width,
+        pose_label_text_line_width=pose_label_text_line_width,
         output_directory=output_directory,
         output_filename_prefix=output_filename_prefix,
         output_filename_datetime_format=output_filename_datetime_format,
@@ -2920,9 +2920,9 @@ def overlay_pose_tracks_3d_identified_interpolated_local(
     keypoint_connector_alpha=0.6,
     keypoint_connector_linewidth=3,
     pose_label_color='white',
-    pose_label_background_alpha=0.6,
+    pose_label_box_alpha=0.6,
     pose_label_font_scale=1.5,
-    pose_label_line_width=1,
+    pose_label_text_line_width=1,
     output_filename_datetime_format='%Y%m%d_%H%M%S_%f',
     output_filename_extension='avi',
     output_fourcc_string='XVID',
@@ -2981,9 +2981,9 @@ def overlay_pose_tracks_3d_identified_interpolated_local(
         keypoint_connector_alpha (float): Alpha value for keypoint connectors (default is 0.6)
         keypoint_connector_linewidth (float): Line width for keypoint connectors (default is 3.0)
         pose_label_color (str): Color for pose label text (default is 'white')
-        pose_label_background_alpha (float): Alpha value for pose label background (default is 0.6)
+        pose_label_box_alpha (float): Alpha value for pose label background (default is 0.6)
         pose_label_font_scale (float): Font scale for pose label (default is 1.5)
-        pose_label_line_width (float): Line width for pose label text (default is 1.0)
+        pose_label_text_line_width (float): Line width for pose label text (default is 1.0)
         output_filename_datetime_format (str): Datetime format for output filename (default is \'%Y%m%d_%H%M%S_%f\')
         output_filename_extension (str): Filename extension for output (determines file format) (default is \'avi\')
         output_fourcc_string (str): FOURCC code for output format (default is \'XVID\')
@@ -3040,9 +3040,9 @@ def overlay_pose_tracks_3d_identified_interpolated_local(
         keypoint_connector_alpha=keypoint_connector_alpha,
         keypoint_connector_linewidth=keypoint_connector_linewidth,
         pose_label_color=pose_label_color,
-        pose_label_background_alpha=pose_label_background_alpha,
+        pose_label_box_alpha=pose_label_box_alpha,
         pose_label_font_scale=pose_label_font_scale,
-        pose_label_line_width=pose_label_line_width,
+        pose_label_text_line_width=pose_label_text_line_width,
         output_directory=output_directory,
         output_filename_prefix=output_filename_prefix,
         output_filename_datetime_format=output_filename_datetime_format,
