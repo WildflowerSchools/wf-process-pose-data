@@ -123,7 +123,7 @@ def overlay_poses(
     )
     if pose_type=='3d':
         if camera_calibrations is None:
-            logger.info('Fetching camera calibrations')
+            logger.info('Fetching camera calibration info')
             camera_calibrations = honeycomb_io.fetch_camera_calibrations(
                 camera_ids,
                 start=start,
@@ -378,15 +378,14 @@ def overlay_poses_timestamp(
     output_filename_datetime_format='%Y%m%d_%H%M%S_%f',
     output_filename_extension='png',
 ):
+    logger.info('Detecting whether poses are 2D or 3D')
     poses_df_columns = poses_df.columns.tolist()
     if 'keypoint_coordinates_3d' in poses_df_columns and 'camera_id' not in poses_df_columns:
         logger.info('Poses appear to be 3D poses. Projecting into each camera view')
-        poses_3d = True
-        poses_2d = False
+        pose_type='3d'
     elif 'keypoint_coordinates_3d' not in poses_df_columns and 'camera_id' in poses_df_columns:
         logger.info('Poses appear to be 2D poses. Subsetting poses foreach camera view')
-        poses_3d = False
-        poses_2d = True
+        pose_type='2d'
     elif len(poses_df) == 0:
         logger.warn('Pose dataframe is empty')
         return
@@ -404,6 +403,7 @@ def overlay_poses_timestamp(
         raise ValueError('Supplied poses contain no data for timestamp {}'.format(
             timestamp.isoformat()
         ))
+    logger.info('Fetching source images from local drive')
     image_metadata_with_local_paths = video_io.fetch_images(
         image_timestamps=[timestamp],
         camera_assignment_ids=camera_assignment_ids,
@@ -426,21 +426,25 @@ def overlay_poses_timestamp(
         local_video_directory=local_video_directory,
         video_filename_extension=video_filename_extension
     )
+    logger.info('Converting flat image metadata list to dictionary')
     image_metadata_dict = dict()
     for datum in image_metadata_with_local_paths:
         image_metadata_dict[datum.get('device_id')] = datum
     camera_ids = list(image_metadata_dict.keys())
+    logger.info('Fetching camera names')
     camera_name_dict = honeycomb_io.fetch_camera_names(
         camera_ids
     )
-    if poses_3d:
+    if pose_type=='3d':
         if camera_calibrations is None:
+            logger.info('Fetching camera calibration info')
             camera_calibrations = honeycomb_io.fetch_camera_calibrations(
                 camera_ids,
                 start=timestamp,
                 end=timestamp
             )
     if pose_model_id is not None:
+        logger.info('Fetching pose model')
         pose_model = honeycomb_io.fetch_pose_model_by_pose_model_id(
             pose_model_id
         )
@@ -454,47 +458,31 @@ def overlay_poses_timestamp(
     for camera_id in camera_ids:
         camera_name = camera_name_dict[camera_id]
         logger.info('Overlaying poses for {}'.format(camera_name))
-        if poses_2d:
+        if pose_type=='2d':
             poses_camera_df = poses_df_timestamp.loc[poses_df_timestamp['camera_id'] == camera_id].copy()
-        if poses_3d:
+        else:
             poses_camera_df = poses_df_timestamp.copy()
-            camera_calibration = camera_calibrations[camera_id]
-            project_points_partial = functools.partial(
-                cv_utils.project_points,
-                rotation_vector=camera_calibration['rotation_vector'],
-                translation_vector=camera_calibration['translation_vector'],
-                camera_matrix=camera_calibration['camera_matrix'],
-                distortion_coefficients=camera_calibration['distortion_coefficients'],
-                remove_behind_camera=True,
-                remove_outside_frame=True,
-                image_corners=[
-                    [0,0],
-                    [camera_calibration['image_width'], camera_calibration['image_height']]
-                ]
-            )
-            poses_camera_df['keypoint_coordinates_2d'] = poses_camera_df['keypoint_coordinates_3d'].apply(project_points_partial)
         image_local_path = image_metadata_dict[camera_id]['image_local_path']
         image = cv.imread(image_local_path)
-        for pose_id, row in poses_camera_df.iterrows():
-            keypoint_coordinates_2d = row['keypoint_coordinates_2d']
-            if pose_label_column is not None:
-                pose_label = row[pose_label_column]
-            else:
-                pose_label = None
-            image=poseconnect.overlay.overlay_pose_image(
-                keypoint_coordinates=keypoint_coordinates_2d,
-                image=image,
-                pose_type='2d',
-                camera_calibration=None,
-                pose_label=pose_label,
-                draw_keypoint_connectors=draw_keypoint_connectors,
-                keypoint_connectors=keypoint_connectors,
-                keypoint_alpha=keypoint_alpha,
-                keypoint_connector_alpha=keypoint_connector_alpha,
-                keypoint_connector_linewidth=keypoint_connector_linewidth,
-                pose_label_font_scale=pose_label_font_scale,
-                pose_label_text_line_width=pose_label_text_line_width
-            )
+        image = poseconnect.overlay_poses_image(
+            poses=poses_camera_df,
+            image=image,
+            pose_type=pose_type,
+            camera_calibration=camera_calibrations[camera_id],
+            pose_label_column=pose_label_column,
+            draw_keypoint_connectors=draw_keypoint_connectors,
+            keypoint_connectors=keypoint_connectors,
+            pose_model_name=None,
+            pose_color=pose_color,
+            keypoint_radius=keypoint_radius,
+            keypoint_alpha=keypoint_alpha,
+            keypoint_connector_alpha=keypoint_connector_alpha,
+            keypoint_connector_linewidth=keypoint_connector_linewidth,
+            pose_label_text_color=pose_label_color,
+            pose_label_box_alpha=pose_label_box_alpha,
+            pose_label_font_scale=pose_label_font_scale,
+            pose_label_text_line_width=pose_label_text_line_width,
+        )
         output_path = os.path.join(
             output_directory,
             '{}_{}_{}.{}'.format(
