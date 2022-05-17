@@ -357,8 +357,6 @@ def reconstruct_poses_3d_local_by_time_segment(
     min_pose_pair_score=None,
     max_pose_pair_score=25.0,
     pose_pair_score_distance_method='pixels',
-    pose_pair_score_pixel_distance_scale=5.0,
-    pose_pair_score_summary_method='rms',
     pose_3d_limits=None,
     pose_3d_graph_initial_edge_threshold=2,
     pose_3d_graph_max_dispersion=0.20,
@@ -435,8 +433,6 @@ def reconstruct_poses_3d_local_by_time_segment(
         min_pose_pair_score (float): Minimum pose pair score for pose pair to be included (default is None)
         max_pose_pair_score (float): Maximum pose pair for pose pair to be included (default is 25.0)
         pose_pair_score_distance_method (str): Method for calculating distance between original and reprojected pose keypoints (default is \'pixels\')
-        pose_pair_score_pixel_distance_scale (float): Pixel distance scale for \'probability\' method (default is 5.0)
-        pose_pair_score_summary_method (str): Method for summarizing reprojected keypoint distance over pose (default is \'rms\')
         pose_3d_limits (array): Spatial limits for each type of pose keypoint (for filtering candidate 3D poses) (default is None)
         pose_3d_graph_initial_edge_threshold (int): Minimum number of pose pairs in pose (edges in graph) (default is 2)
         pose_3d_graph_max_dispersion (float): Keypoint dispersion threshold for increasing required number of edges (default is 0.20)
@@ -552,8 +548,6 @@ def reconstruct_poses_3d_local_by_time_segment(
             'min_pose_pair_score': min_pose_pair_score,
             'max_pose_pair_score': max_pose_pair_score,
             'pose_pair_score_distance_method': pose_pair_score_distance_method,
-            'pose_pair_score_pixel_distance_scale': pose_pair_score_pixel_distance_scale,
-            'pose_pair_score_summary_method': pose_pair_score_summary_method,
             'pose_3d_limits': pose_3d_limits,
             'pose_3d_graph_initial_edge_threshold': pose_3d_graph_initial_edge_threshold,
             'pose_3d_graph_max_dispersion': pose_3d_graph_max_dispersion,
@@ -610,8 +604,6 @@ def reconstruct_poses_3d_local_by_time_segment(
         min_pose_pair_score=min_pose_pair_score,
         max_pose_pair_score=max_pose_pair_score,
         pose_pair_score_distance_method=pose_pair_score_distance_method,
-        pose_pair_score_pixel_distance_scale=pose_pair_score_pixel_distance_scale,
-        pose_pair_score_summary_method=pose_pair_score_summary_method,
         pose_3d_limits=pose_3d_limits,
         room_x_limits=room_x_limits,
         room_y_limits=room_y_limits,
@@ -699,8 +691,6 @@ def reconstruct_poses_3d_local_timestamp(
     min_pose_pair_score=None,
     max_pose_pair_score=25.0,
     pose_pair_score_distance_method='pixels',
-    pose_pair_score_pixel_distance_scale=5.0,
-    pose_pair_score_summary_method='rms',
     pose_3d_limits=None,
     pose_3d_graph_initial_edge_threshold=2,
     pose_3d_graph_max_dispersion=0.20,
@@ -838,8 +828,6 @@ def reconstruct_poses_3d_local_timestamp(
         min_pose_pair_score=min_pose_pair_score,
         max_pose_pair_score=max_pose_pair_score,
         pose_pair_score_distance_method=pose_pair_score_distance_method,
-        pose_pair_score_pixel_distance_scale=pose_pair_score_pixel_distance_scale,
-        pose_pair_score_summary_method=pose_pair_score_summary_method,
         pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
         pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
         include_track_labels=include_track_labels,
@@ -868,8 +856,6 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
     min_pose_pair_score=None,
     max_pose_pair_score=25.0,
     pose_pair_score_distance_method='pixels',
-    pose_pair_score_pixel_distance_scale=5.0,
-    pose_pair_score_summary_method='rms',
     pose_3d_limits=None,
     room_x_limits=None,
     room_y_limits=None,
@@ -933,8 +919,6 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
         min_pose_pair_score=min_pose_pair_score,
         max_pose_pair_score=max_pose_pair_score,
         pose_pair_score_distance_method=pose_pair_score_distance_method,
-        pose_pair_score_pixel_distance_scale=pose_pair_score_pixel_distance_scale,
-        pose_pair_score_summary_method=pose_pair_score_summary_method,
         pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
         pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
         include_track_labels=include_track_labels,
