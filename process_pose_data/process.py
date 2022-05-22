@@ -336,8 +336,6 @@ def reconstruct_poses_3d_local_by_time_segment(
     environment_id,
     pose_extraction_2d_inference_id,
     pose_model_id,
-    room_x_limits,
-    room_y_limits,
     start=None,
     end=None,
     camera_assignment_ids=None,
@@ -351,18 +349,29 @@ def reconstruct_poses_3d_local_by_time_segment(
     client_id=None,
     client_secret=None,
     pose_processing_subdirectory='pose_processing',
-    min_keypoint_quality=None,
-    min_num_keypoints=None,
-    min_pose_quality=None,
-    min_pose_pair_score=None,
-    max_pose_pair_score=25.0,
-    pose_pair_score_distance_method='pixels',
-    pose_pair_score_pixel_distance_scale=5.0,
-    pose_pair_score_summary_method='rms',
     pose_3d_limits=None,
-    pose_3d_graph_initial_edge_threshold=2,
-    pose_3d_graph_max_dispersion=0.20,
-    include_track_labels=False,
+    room_x_limits=None,
+    room_y_limits=None,
+    floor_z=poseconnect.defaults.POSE_3D_FLOOR_Z,
+    foot_z_limits=poseconnect.defaults.POSE_3D_FOOT_Z_LIMITS,
+    knee_z_limits=poseconnect.defaults.POSE_3D_KNEE_Z_LIMITS,
+    hip_z_limits=poseconnect.defaults.POSE_3D_HIP_Z_LIMITS,
+    thorax_z_limits=poseconnect.defaults.POSE_3D_THORAX_Z_LIMITS,
+    shoulder_z_limits=poseconnect.defaults.POSE_3D_SHOULDER_Z_LIMITS,
+    elbow_z_limits=poseconnect.defaults.POSE_3D_ELBOW_Z_LIMITS,
+    hand_z_limits=poseconnect.defaults.POSE_3D_HAND_Z_LIMITS,
+    neck_z_limits=poseconnect.defaults.POSE_3D_NECK_Z_LIMITS,
+    head_z_limits=poseconnect.defaults.POSE_3D_HEAD_Z_LIMITS,
+    tolerance=poseconnect.defaults.POSE_3D_LIMITS_TOLERANCE,
+    min_keypoint_quality=poseconnect.defaults.RECONSTRUCTION_MIN_KEYPOINT_QUALITY,
+    min_num_keypoints=poseconnect.defaults.RECONSTRUCTION_MIN_NUM_KEYPOINTS,
+    min_pose_quality=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_QUALITY,
+    min_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_PAIR_SCORE,
+    max_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MAX_POSE_PAIR_SCORE,
+    pose_pair_score_distance_method=poseconnect.defaults.RECONSTRUCTION_POSE_PAIR_SCORE_DISTANCE_METHOD,
+    pose_3d_graph_initial_edge_threshold=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_INITIAL_EDGE_THRESHOLD,
+    pose_3d_graph_max_dispersion=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_MAX_DISPERSION,
+    include_track_labels=poseconnect.defaults.RECONSTRUCTION_INCLUDE_TRACK_LABELS,
     parallel=False,
     num_parallel_processes=None,
     task_progress_bar=False,
@@ -375,17 +384,15 @@ def reconstruct_poses_3d_local_by_time_segment(
     If camera information is not specified, script pulls camera data from
     Honeycomb based on environment ID, start time, and end time.
 
-    Options for pose pair score distance method are \'pixels\' (simple 2D distance
-    measured in pixels) or \'probability\' (likelihood of that distance assuming
-    2D Gaussian reprojection error).
-
-    Options for pose pair score summary method are \'rms\' (root mean square of
-    distances across keypoints) or \'sum\' (sum of distances across keypoints).
+    Options for pose pair score distance method are \'pixels\' (simple 2D
+    distance measured in pixels) or \'image_frac\' (distance measured in
+    fraction of screen width).
 
     3D pose limits are an array with shape (2, NUM_KEYPOINTS, 3) specifying the
     minimum and maximum possible coordinate values for each type of keypoint
     (for filtering 3D poses). If these limits are not specified, script
-    calculates default limits based on room x and y limits and pose model.
+    calculates default limits based on room x and y limits, pose model, and
+    (optionally) specified z limits for each type of body part.
 
     Candidate 3D poses are validated and grouped into people using an adaptive
     strategy. After initial pose filtering, the algorithm forms a graph with 2D
@@ -414,8 +421,6 @@ def reconstruct_poses_3d_local_by_time_segment(
         environment_id (str): Honeycomb environment ID for source environment
         pose_extraction_2d_inference_id (str): Inference ID for source data
         pose_model_id (str): Honeycomb pose model ID for pose model that defines 2D/3D pose data structure
-        room_x_limits (sequence of float): Boundaries of room in x direction in [MIN, MAX] format (for filtering 3D poses)
-        room_y_limits (sequence of float): Boundaries of room in y direction in [MIN, MAX] format (for filtering 3D poses)
         start (datetime): Start of period within source data to be analyzed (default is None)
         end (datetime): End of period within source data to be analyzed (default is None)
         camera_assignment_ids (sequence of str): List of camera assignment IDs to analyze (default is None)
@@ -429,18 +434,29 @@ def reconstruct_poses_3d_local_by_time_segment(
         client_id (str): Honeycomb client ID (otherwise falls back on default strategy of MinimalHoneycombClient) (default is None)
         client_secret (str): Honeycomb client secret (otherwise falls back on default strategy of MinimalHoneycombClient) (default is None)
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
-        min_keypoint_quality (float): Minimum keypoint quality for keypoint to be included (default is None)
-        min_num_keypoints (float): Mininum number of keypoints (after keypoint quality filter) for 2D pose to be included (default is None)
-        min_pose_quality=None (float): Minimum pose quality for 2D pose to be included (default is None)
-        min_pose_pair_score (float): Minimum pose pair score for pose pair to be included (default is None)
-        max_pose_pair_score (float): Maximum pose pair for pose pair to be included (default is 25.0)
-        pose_pair_score_distance_method (str): Method for calculating distance between original and reprojected pose keypoints (default is \'pixels\')
-        pose_pair_score_pixel_distance_scale (float): Pixel distance scale for \'probability\' method (default is 5.0)
-        pose_pair_score_summary_method (str): Method for summarizing reprojected keypoint distance over pose (default is \'rms\')
-        pose_3d_limits (array): Spatial limits for each type of pose keypoint (for filtering candidate 3D poses) (default is None)
-        pose_3d_graph_initial_edge_threshold (int): Minimum number of pose pairs in pose (edges in graph) (default is 2)
-        pose_3d_graph_max_dispersion (float): Keypoint dispersion threshold for increasing required number of edges (default is 0.20)
-        include_track_labels (bool): Boolean indicating whether to include source 2D track labels in 3D pose data (default is False)
+        min_keypoint_quality (float): Minimum keypoint quality for keypoint to be included
+        min_num_keypoints (float): Mininum number of keypoints (after keypoint quality filter) for 2D pose to be included
+        min_pose_quality=None (float): Minimum pose quality for 2D pose to be included
+        min_pose_pair_score (float): Minimum pose pair score for pose pair to be included
+        max_pose_pair_score (float): Maximum pose pair for pose pair to be included
+        pose_pair_score_distance_method (str): Method for calculating distance between original and reprojected pose keypoints
+        pose_3d_limits (array): Spatial limits for each type of pose keypoint (for filtering candidate 3D poses)
+        room_x_limits (sequence of float): Boundaries of room in x direction in [MIN, MAX] format (for filtering 3D poses)
+        room_y_limits (sequence of float): Boundaries of room in y direction in [MIN, MAX] format (for filtering 3D poses)
+        floor_z (float): Height (z-coordinate) of room floor (for filtering 3D poses)
+        foot_z_limits (sequence of float): Minimum and maximum height above floor for feet in reconstructed 3D poses ([MIN, MAX])
+        knee_z_limits (sequence of float): Minimum and maximum height above floor for knees in reconstructed 3D poses ([MIN, MAX])
+        hip_z_limits (sequence of float): Minimum and maximum height above floor for hips in reconstructed 3D poses ([MIN, MAX])
+        thorax_z_limits (sequence of float): Minimum and maximum height above floor for thorax in reconstructed 3D poses ([MIN, MAX])
+        shoulder_z_limits (sequence of float): Minimum and maximum height above floor for shoulders in reconstructed 3D poses ([MIN, MAX])
+        elbow_z_limits (sequence of float): Minimum and maximum height above floor for elbows in reconstructed 3D poses ([MIN, MAX])
+        hand_z_limits (sequence of float): Minimum and maximum height above floor for hands in reconstructed 3D poses ([MIN, MAX])
+        neck_z_limits (sequence of float): Minimum and maximum height above floor for necl in reconstructed 3D poses ([MIN, MAX])
+        head_z_limits (sequence of float): Minimum and maximum height above floor for head in reconstructed 3D poses ([MIN, MAX])
+        tolerance (float): Tolerance for 3D pose spatial limits
+        pose_3d_graph_initial_edge_threshold (int): Minimum number of pose pairs in pose (edges in graph)
+        pose_3d_graph_max_dispersion (float): Keypoint dispersion threshold for increasing required number of edges
+        include_track_labels (bool): Boolean indicating whether to include source 2D track labels in 3D pose data
         parallel (bool): Boolean indicating whether to use multiple parallel processes (one for each time segment) (default is False)
         num_parallel_processes (int): Number of parallel processes in pool (otherwise defaults to number of cores - 1) (default is None)
         task_progress_bar (bool): Boolean indicating whether script should display an overall progress bar (default is False)
@@ -529,7 +545,18 @@ def reconstruct_poses_3d_local_by_time_segment(
             token_uri=token_uri,
             audience=audience,
             client_id=client_id,
-            client_secret=client_secret
+            client_secret=client_secret,
+            floor_z=floor_z,
+            foot_z_limits=foot_z_limits,
+            knee_z_limits=knee_z_limits,
+            hip_z_limits=hip_z_limits,
+            thorax_z_limits=thorax_z_limits,
+            shoulder_z_limits=shoulder_z_limits,
+            elbow_z_limits=elbow_z_limits,
+            hand_z_limits=hand_z_limits,
+            neck_z_limits=neck_z_limits,
+            head_z_limits=head_z_limits,
+            tolerance=tolerance
         )
     pose_reconstruction_3d_metadata = generate_metadata(
         environment_id=environment_id,
@@ -546,19 +573,27 @@ def reconstruct_poses_3d_local_by_time_segment(
             'camera_device_ids': camera_device_ids,
             'camera_calibrations': camera_calibrations,
             'coordinate_space_id': coordinate_space_id,
+            'pose_3d_limits': pose_3d_limits,
+            'floor_z': floor_z,
+            'foot_z_limits': foot_z_limits,
+            'knee_z_limits': knee_z_limits,
+            'hip_z_limits': hip_z_limits,
+            'thorax_z_limits': thorax_z_limits,
+            'shoulder_z_limits': shoulder_z_limits,
+            'elbow_z_limits': elbow_z_limits,
+            'hand_z_limits': hand_z_limits,
+            'neck_z_limits': neck_z_limits,
+            'head_z_limits': head_z_limits,
+            'tolerance': tolerance,
             'min_keypoint_quality': min_keypoint_quality,
             'min_num_keypoints': min_num_keypoints,
             'min_pose_quality': min_pose_quality,
             'min_pose_pair_score': min_pose_pair_score,
             'max_pose_pair_score': max_pose_pair_score,
             'pose_pair_score_distance_method': pose_pair_score_distance_method,
-            'pose_pair_score_pixel_distance_scale': pose_pair_score_pixel_distance_scale,
-            'pose_pair_score_summary_method': pose_pair_score_summary_method,
-            'pose_3d_limits': pose_3d_limits,
             'pose_3d_graph_initial_edge_threshold': pose_3d_graph_initial_edge_threshold,
             'pose_3d_graph_max_dispersion': pose_3d_graph_max_dispersion,
             'include_track_labels': include_track_labels
-
         }
     )
     inference_id = pose_reconstruction_3d_metadata.get('inference_id')
@@ -595,14 +630,15 @@ def reconstruct_poses_3d_local_by_time_segment(
         environment_id=environment_id,
         pose_extraction_2d_inference_id=pose_extraction_2d_inference_id,
         pose_reconstruction_3d_inference_id=inference_id,
+        pose_3d_limits=pose_3d_limits,
         pose_processing_subdirectory=pose_processing_subdirectory,
         camera_device_id_lookup=camera_device_id_lookup,
-        client=None,
-        uri=None,
-        token_uri=None,
-        audience=None,
-        client_id=None,
-        client_secret=None,
+        client=client,
+        uri=uri,
+        token_uri=token_uri,
+        audience=audience,
+        client_id=client_id,
+        client_secret=client_secret,
         camera_calibrations=camera_calibrations,
         min_keypoint_quality=min_keypoint_quality,
         min_num_keypoints=min_num_keypoints,
@@ -610,11 +646,6 @@ def reconstruct_poses_3d_local_by_time_segment(
         min_pose_pair_score=min_pose_pair_score,
         max_pose_pair_score=max_pose_pair_score,
         pose_pair_score_distance_method=pose_pair_score_distance_method,
-        pose_pair_score_pixel_distance_scale=pose_pair_score_pixel_distance_scale,
-        pose_pair_score_summary_method=pose_pair_score_summary_method,
-        pose_3d_limits=pose_3d_limits,
-        room_x_limits=room_x_limits,
-        room_y_limits=room_y_limits,
         pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
         pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
         include_track_labels=include_track_labels,
@@ -680,8 +711,6 @@ def reconstruct_poses_3d_local_timestamp(
     environment_id,
     pose_extraction_2d_inference_id,
     pose_model_id,
-    room_x_limits,
-    room_y_limits,
     camera_assignment_ids=None,
     camera_device_id_lookup=None,
     camera_calibrations=None,
@@ -693,18 +722,29 @@ def reconstruct_poses_3d_local_timestamp(
     client_id=None,
     client_secret=None,
     pose_processing_subdirectory='pose_processing',
-    min_keypoint_quality=None,
-    min_num_keypoints=None,
-    min_pose_quality=None,
-    min_pose_pair_score=None,
-    max_pose_pair_score=25.0,
-    pose_pair_score_distance_method='pixels',
-    pose_pair_score_pixel_distance_scale=5.0,
-    pose_pair_score_summary_method='rms',
     pose_3d_limits=None,
-    pose_3d_graph_initial_edge_threshold=2,
-    pose_3d_graph_max_dispersion=0.20,
-    include_track_labels=False,
+    room_x_limits=None,
+    room_y_limits=None,
+    floor_z=poseconnect.defaults.POSE_3D_FLOOR_Z,
+    foot_z_limits=poseconnect.defaults.POSE_3D_FOOT_Z_LIMITS,
+    knee_z_limits=poseconnect.defaults.POSE_3D_KNEE_Z_LIMITS,
+    hip_z_limits=poseconnect.defaults.POSE_3D_HIP_Z_LIMITS,
+    thorax_z_limits=poseconnect.defaults.POSE_3D_THORAX_Z_LIMITS,
+    shoulder_z_limits=poseconnect.defaults.POSE_3D_SHOULDER_Z_LIMITS,
+    elbow_z_limits=poseconnect.defaults.POSE_3D_ELBOW_Z_LIMITS,
+    hand_z_limits=poseconnect.defaults.POSE_3D_HAND_Z_LIMITS,
+    neck_z_limits=poseconnect.defaults.POSE_3D_NECK_Z_LIMITS,
+    head_z_limits=poseconnect.defaults.POSE_3D_HEAD_Z_LIMITS,
+    tolerance=poseconnect.defaults.POSE_3D_LIMITS_TOLERANCE,
+    min_keypoint_quality=poseconnect.defaults.RECONSTRUCTION_MIN_KEYPOINT_QUALITY,
+    min_num_keypoints=poseconnect.defaults.RECONSTRUCTION_MIN_NUM_KEYPOINTS,
+    min_pose_quality=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_QUALITY,
+    min_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_PAIR_SCORE,
+    max_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MAX_POSE_PAIR_SCORE,
+    pose_pair_score_distance_method=poseconnect.defaults.RECONSTRUCTION_POSE_PAIR_SCORE_DISTANCE_METHOD,
+    pose_3d_graph_initial_edge_threshold=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_INITIAL_EDGE_THRESHOLD,
+    pose_3d_graph_max_dispersion=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_MAX_DISPERSION,
+    include_track_labels=poseconnect.defaults.RECONSTRUCTION_INCLUDE_TRACK_LABELS,
     return_diagnostics=False
 ):
     if timestamp.tzinfo is None:
@@ -765,7 +805,18 @@ def reconstruct_poses_3d_local_timestamp(
             token_uri=token_uri,
             audience=audience,
             client_id=client_id,
-            client_secret=client_secret
+            client_secret=client_secret,
+            floor_z=floor_z,
+            foot_z_limits=foot_z_limits,
+            knee_z_limits=knee_z_limits,
+            hip_z_limits=hip_z_limits,
+            thorax_z_limits=thorax_z_limits,
+            shoulder_z_limits=shoulder_z_limits,
+            elbow_z_limits=elbow_z_limits,
+            hand_z_limits=hand_z_limits,
+            neck_z_limits=neck_z_limits,
+            head_z_limits=head_z_limits,
+            tolerance=tolerance
         )
     time_segment_start_list = process_pose_data.local_io.generate_time_segment_start_list(
         start=timestamp,
@@ -838,8 +889,6 @@ def reconstruct_poses_3d_local_timestamp(
         min_pose_pair_score=min_pose_pair_score,
         max_pose_pair_score=max_pose_pair_score,
         pose_pair_score_distance_method=pose_pair_score_distance_method,
-        pose_pair_score_pixel_distance_scale=pose_pair_score_pixel_distance_scale,
-        pose_pair_score_summary_method=pose_pair_score_summary_method,
         pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
         pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
         include_track_labels=include_track_labels,
@@ -853,6 +902,7 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
     environment_id,
     pose_extraction_2d_inference_id,
     pose_reconstruction_3d_inference_id,
+    pose_3d_limits,
     pose_processing_subdirectory='pose_processing',
     camera_device_id_lookup=None,
     client=None,
@@ -862,20 +912,15 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
     client_id=None,
     client_secret=None,
     camera_calibrations=None,
-    min_keypoint_quality=None,
-    min_num_keypoints=None,
-    min_pose_quality=None,
-    min_pose_pair_score=None,
-    max_pose_pair_score=25.0,
-    pose_pair_score_distance_method='pixels',
-    pose_pair_score_pixel_distance_scale=5.0,
-    pose_pair_score_summary_method='rms',
-    pose_3d_limits=None,
-    room_x_limits=None,
-    room_y_limits=None,
-    pose_3d_graph_initial_edge_threshold=2,
-    pose_3d_graph_max_dispersion=0.20,
-    include_track_labels=False,
+    min_keypoint_quality=poseconnect.defaults.RECONSTRUCTION_MIN_KEYPOINT_QUALITY,
+    min_num_keypoints=poseconnect.defaults.RECONSTRUCTION_MIN_NUM_KEYPOINTS,
+    min_pose_quality=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_QUALITY,
+    min_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_PAIR_SCORE,
+    max_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MAX_POSE_PAIR_SCORE,
+    pose_pair_score_distance_method=poseconnect.defaults.RECONSTRUCTION_POSE_PAIR_SCORE_DISTANCE_METHOD,
+    pose_3d_graph_initial_edge_threshold=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_INITIAL_EDGE_THRESHOLD,
+    pose_3d_graph_max_dispersion=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_MAX_DISPERSION,
+    include_track_labels=poseconnect.defaults.RECONSTRUCTION_INCLUDE_TRACK_LABELS,
     progress_bar=False,
     notebook=False
 ):
@@ -922,19 +967,14 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
     logger.info('Reconstructing 3D poses for time segment starting at {}'.format(time_segment_start.isoformat()))
     poses_3d_df = poseconnect.reconstruct.reconstruct_poses_3d(
         poses_2d=poses_2d_df_time_segment,
-        pose_3d_limits=pose_3d_limits,
-        pose_model_name=None,
-        room_x_limits=room_x_limits,
-        room_y_limits=room_y_limits,
         camera_calibrations=camera_calibrations,
+        pose_3d_limits=pose_3d_limits,
         min_keypoint_quality=min_keypoint_quality,
         min_num_keypoints=min_num_keypoints,
         min_pose_quality=min_pose_quality,
         min_pose_pair_score=min_pose_pair_score,
         max_pose_pair_score=max_pose_pair_score,
         pose_pair_score_distance_method=pose_pair_score_distance_method,
-        pose_pair_score_pixel_distance_scale=pose_pair_score_pixel_distance_scale,
-        pose_pair_score_summary_method=pose_pair_score_summary_method,
         pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
         pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
         include_track_labels=include_track_labels,
@@ -963,14 +1003,14 @@ def generate_pose_tracks_3d_local_by_time_segment(
     pose_reconstruction_3d_inference_id,
     start=None,
     end=None,
-    max_match_distance=1.0,
-    max_iterations_since_last_match=20,
-    centroid_position_initial_sd=1.0,
-    centroid_velocity_initial_sd=1.0,
-    reference_delta_t_seconds=1.0,
-    reference_velocity_drift=0.30,
-    position_observation_sd=0.5,
-    num_poses_per_track_min=11,
+    max_match_distance=poseconnect.defaults.TRACKING_MAX_MATCH_DISTANCE,
+    max_iterations_since_last_match=poseconnect.defaults.TRACKING_MAX_ITERATIONS_SINCE_LAST_MATCH,
+    centroid_position_initial_sd=poseconnect.defaults.TRACKING_CENTROID_POSITION_INITIAL_SD,
+    centroid_velocity_initial_sd=poseconnect.defaults.TRACKING_CENTROID_VELOCITY_INITIAL_SD,
+    reference_delta_t_seconds=poseconnect.defaults.TRACKING_REFERENCE_DELTA_T_SECONDS,
+    reference_velocity_drift=poseconnect.defaults.TRACKING_REFERENCE_VELOCITY_DRIFT,
+    position_observation_sd=poseconnect.defaults.TRACKING_POSITION_OBSERVATION_SD,
+    num_poses_per_track_min=poseconnect.defaults.TRACKING_NUM_POSES_PER_TRACK_MIN,
     pose_processing_subdirectory='pose_processing',
     task_progress_bar=False,
     notebook=False
@@ -993,14 +1033,14 @@ def generate_pose_tracks_3d_local_by_time_segment(
         pose_reconstruction_3d_inference_id (str): Inference ID for source data
         start (datetime): Start of period within source data to be analyzed (default is None)
         end (datetime): End of period within source data to be analyzed (default is None)
-        max_match_distance (float): Maximum distance between 3D pose and predicted pose track for pose to be added to track (default is 1.0)
-        max_iterations_since_last_match (int): Maximum number of unmatched iterations before pose track is terminated (default is 20)
-        centroid_position_initial_sd (float): Initial standard deviation for pose track centroid position (default is 1.0)
-        centroid_velocity_initial_sd (float): Initial standard deviation for pose track centroid velocity (default is 1.0)
-        reference_delta_t_seconds (float): Reference time period for specifying velocity drift (default is 1.0)
-        reference_velocity_drift (float): Reference velocity drift (default is 0.30)
-        position_observation_sd (float): Position observation error (reference is 0.5)
-        num_poses_per_track_min (it): Mininum number of poses in a track (default is 11)
+        max_match_distance (float): Maximum distance between 3D pose and predicted pose track for pose to be added to track
+        max_iterations_since_last_match (int): Maximum number of unmatched iterations before pose track is terminated
+        centroid_position_initial_sd (float): Initial standard deviation for pose track centroid position
+        centroid_velocity_initial_sd (float): Initial standard deviation for pose track centroid velocity
+        reference_delta_t_seconds (float): Reference time period for specifying velocity drift
+        reference_velocity_drift (float): Reference velocity drift
+        position_observation_sd (float): Position observation error
+        num_poses_per_track_min (it): Mininum number of poses in a track
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         task_progress_bar (bool): Boolean indicating whether script should display an overall progress bar (default is False)
         notebook (bool): Boolean indicating whether script is being run in a Jupyter notebook (for progress bar display) (default is False)
@@ -1151,6 +1191,7 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
     environment_id,
     pose_tracking_3d_inference_id,
     pose_processing_subdirectory='pose_processing',
+    frames_per_second=10,
     task_progress_bar=False,
     notebook=False
 ):
@@ -1178,6 +1219,7 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
         environment_id (str): Honeycomb environment ID for source environment
         pose_tracking_3d_inference_id (str): Inference ID for source data
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
+        frames_per_second (float): Frames per second in source video (default is 10)
         task_progress_bar (bool): Boolean indicating whether script should display an overall progress bar (default is False)
         notebook (bool): Boolean indicating whether script is being run in a Jupyter notebook (for progress bar display) (default is False)
 
@@ -1281,7 +1323,8 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
             pose_processing_subdirectory='pose_processing'
         )
         poses_3d_new_df = poseconnect.track.interpolate_pose_track(
-            pose_track_3d=poses_3d_in_track_df
+            pose_track_3d=poses_3d_in_track_df,
+            frames_per_second=frames_per_second
         )
         if len(poses_3d_new_df) == 0:
             continue
@@ -1988,12 +2031,12 @@ def identify_pose_tracks_3d_local_by_segment(
     environment_id,
     download_position_data_inference_id,
     pose_track_3d_interpolation_inference_id,
-    sensor_position_keypoint_index=None,
-    active_person_ids=None,
-    ignore_z=False,
+    sensor_position_keypoint_index=poseconnect.defaults.IDENTIFICATION_SENSOR_POSITION_KEYPOINT_INDEX,
+    active_person_ids=poseconnect.defaults.IDENTIFICATION_ACTIVE_PERSON_IDS,
+    ignore_z=poseconnect.defaults.IDENTIFICATION_IGNORE_Z,
+    max_distance=poseconnect.defaults.IDENTIFICATION_MAX_DISTANCE,
+    return_match_statistics=poseconnect.defaults.IDENTIFICATION_RETURN_MATCH_STATISTICS,
     min_fraction_matched=0.5,
-    max_distance=None,
-    return_match_statistics=False,
     pose_processing_subdirectory='pose_processing',
     task_progress_bar=False,
     notebook=False
@@ -2029,11 +2072,11 @@ def identify_pose_tracks_3d_local_by_segment(
         environment_id (str): Honeycomb environment ID for source environment
         download_position_data_inference_id (str): Inference ID for source position data
         pose_track_3d_interpolation_inference_id_id (str): Inference ID for source pose track data
-        sensor_position_keypoint_index (int or dict): Index of keypoint(s) corresponding to UWB sensor on each person (default: None)
-        active_person_ids (sequence of str): List of Honeycomb person IDs for people known to be wearing active tags (default is None)
-        ignore_z (bool): Boolean indicating whether to ignore z dimension when comparing pose and sensor positions (default is False)
+        sensor_position_keypoint_index (int or dict): Index of keypoint(s) corresponding to UWB sensor on each person
+        active_person_ids (sequence of str): List of Honeycomb person IDs for people known to be wearing active tags
+        ignore_z (bool): Boolean indicating whether to ignore z dimension when comparing pose and sensor positions
+        return_match_statistics (bool): Boolean indicating whether algorithm should return detailed match statistics along with inference ID
         min_fraction_matched (float): Minimum fraction of poses in track which must match person for track to be identified as person (default is 0.5)
-        return_match_statistics (bool): Boolean indicating whether algorithm should return detailed match statistics along with inference ID (defaul is False)
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         task_progress_bar (bool): Boolean indicating whether script should display an overall progress bar (default is False)
         notebook (bool): Boolean indicating whether script is being run in a Jupyter notebook (for progress bar display) (default is False)
@@ -2193,6 +2236,7 @@ def identify_pose_tracks_3d_local_by_segment(
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
+                max_distance=max_distance,
                 return_match_statistics=return_match_statistics
             )
             match_statistics_time_segment_df_list.append(match_statistics_time_segment_df)
@@ -3088,7 +3132,18 @@ def generate_pose_3d_limits(
     token_uri=None,
     audience=None,
     client_id=None,
-    client_secret=None
+    client_secret=None,
+    floor_z=poseconnect.defaults.POSE_3D_FLOOR_Z,
+    foot_z_limits=poseconnect.defaults.POSE_3D_FOOT_Z_LIMITS,
+    knee_z_limits=poseconnect.defaults.POSE_3D_KNEE_Z_LIMITS,
+    hip_z_limits=poseconnect.defaults.POSE_3D_HIP_Z_LIMITS,
+    thorax_z_limits=poseconnect.defaults.POSE_3D_THORAX_Z_LIMITS,
+    shoulder_z_limits=poseconnect.defaults.POSE_3D_SHOULDER_Z_LIMITS,
+    elbow_z_limits=poseconnect.defaults.POSE_3D_ELBOW_Z_LIMITS,
+    hand_z_limits=poseconnect.defaults.POSE_3D_HAND_Z_LIMITS,
+    neck_z_limits=poseconnect.defaults.POSE_3D_NECK_Z_LIMITS,
+    head_z_limits=poseconnect.defaults.POSE_3D_HEAD_Z_LIMITS,
+    tolerance=poseconnect.defaults.POSE_3D_LIMITS_TOLERANCE
 ):
     pose_model = honeycomb_io.fetch_pose_model_by_pose_model_id(
         pose_model_id,
@@ -3102,6 +3157,17 @@ def generate_pose_3d_limits(
     pose_3d_limits = poseconnect.reconstruct.pose_3d_limits_by_pose_model(
         room_x_limits=room_x_limits,
         room_y_limits=room_y_limits,
-        pose_model_name=pose_model_name
+        pose_model_name=pose_model_name,
+        floor_z=floor_z,
+        foot_z_limits=foot_z_limits,
+        knee_z_limits=knee_z_limits,
+        hip_z_limits=hip_z_limits,
+        thorax_z_limits=thorax_z_limits,
+        shoulder_z_limits=shoulder_z_limits,
+        elbow_z_limits=elbow_z_limits,
+        hand_z_limits=hand_z_limits,
+        neck_z_limits=neck_z_limits,
+        head_z_limits=head_z_limits,
+        tolerance=tolerance
     )
     return pose_3d_limits
