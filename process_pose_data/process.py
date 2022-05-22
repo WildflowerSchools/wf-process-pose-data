@@ -1003,14 +1003,14 @@ def generate_pose_tracks_3d_local_by_time_segment(
     pose_reconstruction_3d_inference_id,
     start=None,
     end=None,
-    max_match_distance=1.0,
-    max_iterations_since_last_match=20,
-    centroid_position_initial_sd=1.0,
-    centroid_velocity_initial_sd=1.0,
-    reference_delta_t_seconds=1.0,
-    reference_velocity_drift=0.30,
-    position_observation_sd=0.5,
-    num_poses_per_track_min=11,
+    max_match_distance=poseconnect.defaults.TRACKING_MAX_MATCH_DISTANCE,
+    max_iterations_since_last_match=poseconnect.defaults.TRACKING_MAX_ITERATIONS_SINCE_LAST_MATCH,
+    centroid_position_initial_sd=poseconnect.defaults.TRACKING_CENTROID_POSITION_INITIAL_SD,
+    centroid_velocity_initial_sd=poseconnect.defaults.TRACKING_CENTROID_VELOCITY_INITIAL_SD,
+    reference_delta_t_seconds=poseconnect.defaults.TRACKING_REFERENCE_DELTA_T_SECONDS,
+    reference_velocity_drift=poseconnect.defaults.TRACKING_REFERENCE_VELOCITY_DRIFT,
+    position_observation_sd=poseconnect.defaults.TRACKING_POSITION_OBSERVATION_SD,
+    num_poses_per_track_min=poseconnect.defaults.TRACKING_NUM_POSES_PER_TRACK_MIN,
     pose_processing_subdirectory='pose_processing',
     task_progress_bar=False,
     notebook=False
@@ -1033,14 +1033,14 @@ def generate_pose_tracks_3d_local_by_time_segment(
         pose_reconstruction_3d_inference_id (str): Inference ID for source data
         start (datetime): Start of period within source data to be analyzed (default is None)
         end (datetime): End of period within source data to be analyzed (default is None)
-        max_match_distance (float): Maximum distance between 3D pose and predicted pose track for pose to be added to track (default is 1.0)
-        max_iterations_since_last_match (int): Maximum number of unmatched iterations before pose track is terminated (default is 20)
-        centroid_position_initial_sd (float): Initial standard deviation for pose track centroid position (default is 1.0)
-        centroid_velocity_initial_sd (float): Initial standard deviation for pose track centroid velocity (default is 1.0)
-        reference_delta_t_seconds (float): Reference time period for specifying velocity drift (default is 1.0)
-        reference_velocity_drift (float): Reference velocity drift (default is 0.30)
-        position_observation_sd (float): Position observation error (reference is 0.5)
-        num_poses_per_track_min (it): Mininum number of poses in a track (default is 11)
+        max_match_distance (float): Maximum distance between 3D pose and predicted pose track for pose to be added to track
+        max_iterations_since_last_match (int): Maximum number of unmatched iterations before pose track is terminated
+        centroid_position_initial_sd (float): Initial standard deviation for pose track centroid position
+        centroid_velocity_initial_sd (float): Initial standard deviation for pose track centroid velocity
+        reference_delta_t_seconds (float): Reference time period for specifying velocity drift
+        reference_velocity_drift (float): Reference velocity drift
+        position_observation_sd (float): Position observation error
+        num_poses_per_track_min (it): Mininum number of poses in a track
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         task_progress_bar (bool): Boolean indicating whether script should display an overall progress bar (default is False)
         notebook (bool): Boolean indicating whether script is being run in a Jupyter notebook (for progress bar display) (default is False)
@@ -1191,6 +1191,7 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
     environment_id,
     pose_tracking_3d_inference_id,
     pose_processing_subdirectory='pose_processing',
+    frames_per_second=10,
     task_progress_bar=False,
     notebook=False
 ):
@@ -1218,6 +1219,7 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
         environment_id (str): Honeycomb environment ID for source environment
         pose_tracking_3d_inference_id (str): Inference ID for source data
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
+        frames_per_second (float): Frames per second in source video (default is 10)
         task_progress_bar (bool): Boolean indicating whether script should display an overall progress bar (default is False)
         notebook (bool): Boolean indicating whether script is being run in a Jupyter notebook (for progress bar display) (default is False)
 
@@ -1321,7 +1323,8 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
             pose_processing_subdirectory='pose_processing'
         )
         poses_3d_new_df = poseconnect.track.interpolate_pose_track(
-            pose_track_3d=poses_3d_in_track_df
+            pose_track_3d=poses_3d_in_track_df,
+            frames_per_second=frames_per_second
         )
         if len(poses_3d_new_df) == 0:
             continue
@@ -2028,12 +2031,12 @@ def identify_pose_tracks_3d_local_by_segment(
     environment_id,
     download_position_data_inference_id,
     pose_track_3d_interpolation_inference_id,
-    sensor_position_keypoint_index=None,
-    active_person_ids=None,
-    ignore_z=False,
+    sensor_position_keypoint_index=poseconnect.defaults.IDENTIFICATION_SENSOR_POSITION_KEYPOINT_INDEX,
+    active_person_ids=poseconnect.defaults.IDENTIFICATION_ACTIVE_PERSON_IDS,
+    ignore_z=poseconnect.defaults.IDENTIFICATION_IGNORE_Z,
+    max_distance=poseconnect.defaults.IDENTIFICATION_MAX_DISTANCE,
+    return_match_statistics=poseconnect.defaults.IDENTIFICATION_RETURN_MATCH_STATISTICS,
     min_fraction_matched=0.5,
-    max_distance=None,
-    return_match_statistics=False,
     pose_processing_subdirectory='pose_processing',
     task_progress_bar=False,
     notebook=False
@@ -2069,11 +2072,11 @@ def identify_pose_tracks_3d_local_by_segment(
         environment_id (str): Honeycomb environment ID for source environment
         download_position_data_inference_id (str): Inference ID for source position data
         pose_track_3d_interpolation_inference_id_id (str): Inference ID for source pose track data
-        sensor_position_keypoint_index (int or dict): Index of keypoint(s) corresponding to UWB sensor on each person (default: None)
-        active_person_ids (sequence of str): List of Honeycomb person IDs for people known to be wearing active tags (default is None)
-        ignore_z (bool): Boolean indicating whether to ignore z dimension when comparing pose and sensor positions (default is False)
+        sensor_position_keypoint_index (int or dict): Index of keypoint(s) corresponding to UWB sensor on each person
+        active_person_ids (sequence of str): List of Honeycomb person IDs for people known to be wearing active tags
+        ignore_z (bool): Boolean indicating whether to ignore z dimension when comparing pose and sensor positions
+        return_match_statistics (bool): Boolean indicating whether algorithm should return detailed match statistics along with inference ID
         min_fraction_matched (float): Minimum fraction of poses in track which must match person for track to be identified as person (default is 0.5)
-        return_match_statistics (bool): Boolean indicating whether algorithm should return detailed match statistics along with inference ID (defaul is False)
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         task_progress_bar (bool): Boolean indicating whether script should display an overall progress bar (default is False)
         notebook (bool): Boolean indicating whether script is being run in a Jupyter notebook (for progress bar display) (default is False)
@@ -2233,6 +2236,7 @@ def identify_pose_tracks_3d_local_by_segment(
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
+                max_distance=max_distance,
                 return_match_statistics=return_match_statistics
             )
             match_statistics_time_segment_df_list.append(match_statistics_time_segment_df)
