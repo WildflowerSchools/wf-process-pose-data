@@ -34,7 +34,6 @@ def overlay_poses(
     camera_part_numbers=None,
     camera_names=None,
     camera_serial_numbers=None,
-    chunk_size=100,
     client=None,
     uri=None,
     token_uri=None,
@@ -42,7 +41,6 @@ def overlay_poses(
     client_id=None,
     client_secret=None,
     local_video_directory='./videos',
-    video_filename_extension='mp4',
     pose_model_id=None,
     camera_calibrations=None,
     pose_label_column=None,
@@ -95,7 +93,6 @@ def overlay_poses(
         camera_part_numbers=camera_part_numbers,
         camera_names=camera_names,
         camera_serial_numbers=camera_serial_numbers,
-        chunk_size=chunk_size,
         client=client,
         uri=uri,
         token_uri=token_uri,
@@ -103,7 +100,6 @@ def overlay_poses(
         client_id=client_id,
         client_secret=client_secret,
         local_video_directory=local_video_directory,
-        video_filename_extension=video_filename_extension
     )
     logger.info('Fetched {} videos'.format(
         len(video_metadata_with_local_paths)
@@ -350,7 +346,6 @@ def overlay_poses_timestamp(
     camera_part_numbers=None,
     camera_names=None,
     camera_serial_numbers=None,
-    chunk_size=100,
     client=None,
     uri=None,
     token_uri=None,
@@ -359,7 +354,6 @@ def overlay_poses_timestamp(
     client_secret=None,
     local_video_directory='./videos',
     local_image_directory='./images',
-    video_filename_extension='mp4',
     image_filename_extension='png',
     pose_model_id=None,
     camera_calibrations=None,
@@ -415,7 +409,6 @@ def overlay_poses_timestamp(
         camera_part_numbers=camera_part_numbers,
         camera_names=camera_names,
         camera_serial_numbers=camera_serial_numbers,
-        chunk_size=chunk_size,
         client=client,
         uri=uri,
         token_uri=token_uri,
@@ -425,7 +418,6 @@ def overlay_poses_timestamp(
         local_image_directory=local_image_directory,
         image_filename_extension=image_filename_extension,
         local_video_directory=local_video_directory,
-        video_filename_extension=video_filename_extension
     )
     logger.info('Converting flat image metadata list to dictionary')
     image_metadata_dict = dict()
@@ -513,7 +505,6 @@ def visualize_3d_pose_reconstruction(
     local_image_directory='./images',
     image_filename_extension='png',
     local_video_directory='./videos',
-    video_filename_extension='mp4',
     pose_3d_color='green',
     pose_3d_footprint_color='green',
     pose_3d_footprint_alpha=0.5,
@@ -532,7 +523,6 @@ def visualize_3d_pose_reconstruction(
     output_directory='./image_overlays',
     output_filename_stem='pose_3d_reconstruction',
     output_filename_extension='png',
-    chunk_size=100,
     client=None,
     uri=None,
     token_uri=None,
@@ -627,7 +617,6 @@ def visualize_3d_pose_reconstruction(
     if camera_names is None:
         camera_names = honeycomb_io.fetch_camera_names(
             camera_ids=camera_ids,
-            chunk_size=chunk_size,
             client=client,
             uri=uri,
             token_uri=token_uri,
@@ -641,7 +630,6 @@ def visualize_3d_pose_reconstruction(
             camera_ids=camera_ids,
             start=pose_3d_timestamp,
             end=pose_3d_timestamp,
-            chunk_size=chunk_size,
             client=client,
             uri=uri,
             token_uri=token_uri,
@@ -653,7 +641,6 @@ def visualize_3d_pose_reconstruction(
     image_metadata_with_local_paths = video_io.fetch_images(
         image_timestamps=[pose_3d_timestamp],
         camera_device_ids=camera_ids,
-        chunk_size=chunk_size,
         client=client,
         uri=uri,
         token_uri=token_uri,
@@ -663,7 +650,6 @@ def visualize_3d_pose_reconstruction(
         local_image_directory=local_image_directory,
         image_filename_extension=image_filename_extension,
         local_video_directory=local_video_directory,
-        video_filename_extension=video_filename_extension
     )
     image_metadata_dict = {
         image_metadatum['device_id']: image_metadatum

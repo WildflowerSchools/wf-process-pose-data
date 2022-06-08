@@ -2301,7 +2301,6 @@ def overlay_poses_2d_local(
     camera_names=None,
     camera_serial_numbers=None,
     pose_processing_subdirectory='pose_processing',
-    chunk_size=100,
     client=None,
     uri=None,
     token_uri=None,
@@ -2309,7 +2308,6 @@ def overlay_poses_2d_local(
     client_id=None,
     client_secret=None,
     local_video_directory='./videos',
-    video_filename_extension='mp4',
     camera_calibrations=None,
     keypoint_connectors=None,
     pose_color='green',
@@ -2365,7 +2363,6 @@ def overlay_poses_2d_local(
         camera_serial_numbers (sequence of str): List of Honeycomb device serial numbers for target cameras (default is None)
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         local_video_directory (str): Path to directory where local copies of Honeycomb videos are stored (default is \'./videos\')
-        video_filename_extension (str): Filename extension for local copies of Honeycomb videos (default is \'mp4\')
         camera_calibrations (dict): Dict in format {DEVICE_ID: CAMERA_CALIBRATION_DATA} (default is None)
         keypoint_connectors (array): Array of keypoints to connect with lines to form pose image (default is None)
         pose_color (str): Color of pose (default is \'green\')
@@ -2410,7 +2407,6 @@ def overlay_poses_2d_local(
         camera_part_numbers=camera_part_numbers,
         camera_names=camera_names,
         camera_serial_numbers=camera_serial_numbers,
-        chunk_size=chunk_size,
         client=client,
         uri=uri,
         token_uri=token_uri,
@@ -2418,7 +2414,6 @@ def overlay_poses_2d_local(
         client_id=client_id,
         client_secret=client_secret,
         local_video_directory=local_video_directory,
-        video_filename_extension=video_filename_extension,
         pose_model_id=pose_model_id,
         camera_calibrations=None,
         pose_label_column=None,
@@ -2458,7 +2453,6 @@ def overlay_poses_3d_local(
     camera_names=None,
     camera_serial_numbers=None,
     pose_processing_subdirectory='pose_processing',
-    chunk_size=100,
     client=None,
     uri=None,
     token_uri=None,
@@ -2466,7 +2460,6 @@ def overlay_poses_3d_local(
     client_id=None,
     client_secret=None,
     local_video_directory='./videos',
-    video_filename_extension='mp4',
     camera_calibrations=None,
     keypoint_connectors=None,
     pose_color='green',
@@ -2522,7 +2515,6 @@ def overlay_poses_3d_local(
         camera_serial_numbers (sequence of str): List of Honeycomb device serial numbers for target cameras (default is None)
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         local_video_directory (str): Path to directory where local copies of Honeycomb videos are stored (default is \'./videos\')
-        video_filename_extension (str): Filename extension for local copies of Honeycomb videos (default is \'mp4\')
         camera_calibrations (dict): Dict in format {DEVICE_ID: CAMERA_CALIBRATION_DATA} (default is None)
         keypoint_connectors (array): Array of keypoints to connect with lines to form pose image (default is None)
         pose_color (str): Color of pose (default is \'green\')
@@ -2566,7 +2558,6 @@ def overlay_poses_3d_local(
         camera_part_numbers=camera_part_numbers,
         camera_names=camera_names,
         camera_serial_numbers=camera_serial_numbers,
-        chunk_size=chunk_size,
         client=client,
         uri=uri,
         token_uri=token_uri,
@@ -2574,7 +2565,6 @@ def overlay_poses_3d_local(
         client_id=client_id,
         client_secret=client_secret,
         local_video_directory=local_video_directory,
-        video_filename_extension=video_filename_extension,
         pose_model_id=pose_model_id,
         camera_calibrations=None,
         pose_label_column=None,
@@ -2614,7 +2604,6 @@ def overlay_pose_tracks_3d_uninterpolated_local(
     camera_names=None,
     camera_serial_numbers=None,
     pose_processing_subdirectory='pose_processing',
-    chunk_size=100,
     client=None,
     uri=None,
     token_uri=None,
@@ -2622,7 +2611,6 @@ def overlay_pose_tracks_3d_uninterpolated_local(
     client_id=None,
     client_secret=None,
     local_video_directory='./videos',
-    video_filename_extension='mp4',
     camera_calibrations=None,
     keypoint_connectors=None,
     pose_color='green',
@@ -2682,7 +2670,6 @@ def overlay_pose_tracks_3d_uninterpolated_local(
         camera_serial_numbers (sequence of str): List of Honeycomb device serial numbers for target cameras (default is None)
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         local_video_directory (str): Path to directory where local copies of Honeycomb videos are stored (default is \'./videos\')
-        video_filename_extension (str): Filename extension for local copies of Honeycomb videos (default is \'mp4\')
         camera_calibrations (dict): Dict in format {DEVICE_ID: CAMERA_CALIBRATION_DATA} (default is None)
         keypoint_connectors (array): Array of keypoints to connect with lines to form pose image (default is None)
         pose_color (str): Color of pose (default is \'green\')
@@ -2728,7 +2715,6 @@ def overlay_pose_tracks_3d_uninterpolated_local(
         camera_part_numbers=camera_part_numbers,
         camera_names=camera_names,
         camera_serial_numbers=camera_serial_numbers,
-        chunk_size=chunk_size,
         client=client,
         uri=uri,
         token_uri=token_uri,
@@ -2736,7 +2722,6 @@ def overlay_pose_tracks_3d_uninterpolated_local(
         client_id=client_id,
         client_secret=client_secret,
         local_video_directory=local_video_directory,
-        video_filename_extension=video_filename_extension,
         pose_model_id=pose_model_id,
         camera_calibrations=None,
         pose_label_column='pose_track_3d_id_short',
@@ -2780,7 +2765,6 @@ def overlay_pose_tracks_3d_interpolated_local(
     camera_names=None,
     camera_serial_numbers=None,
     pose_processing_subdirectory='pose_processing',
-    chunk_size=100,
     client=None,
     uri=None,
     token_uri=None,
@@ -2788,7 +2772,6 @@ def overlay_pose_tracks_3d_interpolated_local(
     client_id=None,
     client_secret=None,
     local_video_directory='./videos',
-    video_filename_extension='mp4',
     camera_calibrations=None,
     keypoint_connectors=None,
     pose_color='green',
@@ -2848,7 +2831,6 @@ def overlay_pose_tracks_3d_interpolated_local(
         camera_serial_numbers (sequence of str): List of Honeycomb device serial numbers for target cameras (default is None)
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         local_video_directory (str): Path to directory where local copies of Honeycomb videos are stored (default is \'./videos\')
-        video_filename_extension (str): Filename extension for local copies of Honeycomb videos (default is \'mp4\')
         camera_calibrations (dict): Dict in format {DEVICE_ID: CAMERA_CALIBRATION_DATA} (default is None)
         keypoint_connectors (array): Array of keypoints to connect with lines to form pose image (default is None)
         pose_color (str): Color of pose (default is \'green\')
@@ -2894,7 +2876,6 @@ def overlay_pose_tracks_3d_interpolated_local(
         camera_part_numbers=camera_part_numbers,
         camera_names=camera_names,
         camera_serial_numbers=camera_serial_numbers,
-        chunk_size=chunk_size,
         client=client,
         uri=uri,
         token_uri=token_uri,
@@ -2902,7 +2883,6 @@ def overlay_pose_tracks_3d_interpolated_local(
         client_id=client_id,
         client_secret=client_secret,
         local_video_directory=local_video_directory,
-        video_filename_extension=video_filename_extension,
         pose_model_id=pose_model_id,
         camera_calibrations=None,
         pose_label_column='pose_track_3d_id_short',
@@ -2947,7 +2927,6 @@ def overlay_pose_tracks_3d_identified_interpolated_local(
     camera_serial_numbers=None,
     pose_track_label_column='short_name',
     pose_processing_subdirectory='pose_processing',
-    chunk_size=100,
     client=None,
     uri=None,
     token_uri=None,
@@ -2955,7 +2934,6 @@ def overlay_pose_tracks_3d_identified_interpolated_local(
     client_id=None,
     client_secret=None,
     local_video_directory='./videos',
-    video_filename_extension='mp4',
     camera_calibrations=None,
     keypoint_connectors=None,
     pose_color='green',
@@ -3016,7 +2994,6 @@ def overlay_pose_tracks_3d_identified_interpolated_local(
         pose_track_label_column (str): Name of person data column to use for pose labels (default is \'short_name\')
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         local_video_directory (str): Path to directory where local copies of Honeycomb videos are stored (default is \'./videos\')
-        video_filename_extension (str): Filename extension for local copies of Honeycomb videos (default is \'mp4\')
         camera_calibrations (dict): Dict in format {DEVICE_ID: CAMERA_CALIBRATION_DATA} (default is None)
         keypoint_connectors (array): Array of keypoints to connect with lines to form pose image (default is None)
         pose_color (str): Color of pose (default is \'green\')
@@ -3065,7 +3042,6 @@ def overlay_pose_tracks_3d_identified_interpolated_local(
         camera_part_numbers=camera_part_numbers,
         camera_names=camera_names,
         camera_serial_numbers=camera_serial_numbers,
-        chunk_size=chunk_size,
         client=client,
         uri=uri,
         token_uri=token_uri,
@@ -3073,7 +3049,6 @@ def overlay_pose_tracks_3d_identified_interpolated_local(
         client_id=client_id,
         client_secret=client_secret,
         local_video_directory=local_video_directory,
-        video_filename_extension=video_filename_extension,
         pose_model_id=pose_model_id,
         camera_calibrations=None,
         pose_label_column=pose_track_label_column,
