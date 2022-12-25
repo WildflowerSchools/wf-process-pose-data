@@ -1006,6 +1006,58 @@ def add_short_track_labels(
     poses_3d_with_tracks_df = poses_3d_with_tracks_df.join(track_label_lookup, on='pose_track_3d_id')
     return poses_3d_with_tracks_df
 
+def count_alphapose_frames_time_segment(
+    base_alphapose_dir,
+    environment_id,
+    camera_device_id,
+    time_segment_start
+):
+    time_segment_start_utc = time_segment_start.astimezone(datetime.timezone.utc)
+    batch_start_list = generate_batch_start_list(
+        start=time_segment_start_utc,
+        end=time_segment_start_utc
+    )
+    batch_start = batch_start_list[0]
+    batch_directory_path = generate_alphapose_batch_directory_path(
+        base_alphapose_dir=base_alphapose_dir,
+        environment_id=environment_id,
+        camera_device_id=camera_device_id,
+        batch_start=batch_start
+    )
+    filename_pattern = '{:02}-{:02}_[0-9][0-9][0-9].png'.format(
+        time_segment_start_utc.minute,
+        time_segment_start_utc.second
+    )
+    glob_pattern = os.path.join(
+        batch_directory_path,
+        filename_pattern
+    )
+    image_filenames = glob.glob(glob_pattern)
+    num_frames = len(image_filenames)
+    return num_frames
+
+def generate_alphapose_batch_directory_path(
+    base_alphapose_dir,
+    environment_id,
+    camera_device_id,
+    batch_start
+):
+    batch_start_utc = batch_start.astimezone(datetime.timezone.utc)
+    batch_start_utc_minute = batch_start_utc.minute
+    if batch_start_utc_minute % 10 != 0:
+        raise ValueError('Batch start must fall on even 10 minute boundary')
+    batch_index = round(batch_start_utc_minute/10)
+    path = os.path.join(
+        base_alphapose_dir,
+        environment_id,
+        'frames-{}{}__{}'.format(
+            camera_device_id,
+            batch_start_utc.strftime('%Y-%m-%d_%H'),
+            batch_index
+        )
+    )
+    return path
+
 image_filename_re = re.compile(r'(?P<minute_string>[0-9]{2})-(?P<second_string>[0-9]{2})_(?P<frame_number_string>[0-9]{3})\.png')
 def parse_alphapose_image_filename(filename):
     m = image_filename_re.match(filename)
