@@ -1150,6 +1150,27 @@ def convert_assignment_ids_to_camera_device_ids(
     poses_2d_df = poses_2d_df.reindex(columns=new_column_order)
     return poses_2d_df
 
+def generate_batch_start_list(
+    start,
+    end
+):
+    start_utc = start.astimezone(datetime.timezone.utc)
+    end_utc = end.astimezone(datetime.timezone.utc)
+    start_utc_floor = datetime.datetime(
+        year=start_utc.year,
+        month=start_utc.month,
+        day=start_utc.day,
+        hour=start_utc.hour,
+        minute=10*(start_utc.minute // 10),
+        tzinfo=start_utc.tzinfo
+    )
+    if end_utc == start_utc_floor:
+        num_batches = 1
+    else:
+        num_batches = math.ceil((end_utc - start_utc_floor).total_seconds()  / 600.0)
+    batch_start_list = [start_utc_floor + i*datetime.timedelta(minutes=10) for i in range(num_batches)]
+    return batch_start_list
+
 def generate_time_segment_start_list(
     start,
     end
