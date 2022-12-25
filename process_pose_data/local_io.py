@@ -1006,6 +1006,16 @@ def add_short_track_labels(
     poses_3d_with_tracks_df = poses_3d_with_tracks_df.join(track_label_lookup, on='pose_track_3d_id')
     return poses_3d_with_tracks_df
 
+image_filename_re = re.compile(r'(?P<minute_string>[0-9]{2})-(?P<second_string>[0-9]{2})_(?P<frame_number_string>[0-9]{3})\.png')
+def parse_alphapose_image_filename(filename):
+    m = image_filename_re.match(filename)
+    if m is None:
+        return None, None, None
+    minute = int(m.group('minute_string'))
+    second = int(m.group('second_string'))
+    frame_number = int(m.group('frame_number_string'))
+    return minute, second, frame_number
+
 def alphapose_data_file_glob_pattern(
     base_dir,
     environment_id=None,
