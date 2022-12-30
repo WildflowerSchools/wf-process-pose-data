@@ -1613,6 +1613,9 @@ def convert_assignment_ids_to_camera_device_ids(
     client_id=None,
     client_secret=None
 ):
+    # Don't convert if camera_id is already in columns
+    if 'camera_id' in poses_2d_df.columns:
+        return poses_2d_df
     if camera_device_id_lookup is None:
         assignment_ids = poses_2d_df['assignment_id'].unique().tolist()
         camera_device_id_lookup = honeycomb_io.fetch_camera_device_id_lookup(
