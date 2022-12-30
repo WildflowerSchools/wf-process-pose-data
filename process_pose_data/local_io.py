@@ -1,7 +1,9 @@
 import process_pose_data.viz_3d
+import process_pose_data.shared_constants
 import honeycomb_io
 import pandas as pd
 import numpy as np
+import tqdm
 import logging
 from uuid import uuid4
 import datetime
@@ -13,6 +15,8 @@ import pickle
 import re
 import json
 import math
+import uuid
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +28,397 @@ class CustomJSONEncoder(json.JSONEncoder):
                         return obj.tolist()
                 return json.JSONEncoder.default(self, obj)
 
+
+def extract_poses_2d_gamma(
+    start,
+    end,
+    environment_id,
+    camera_id,
+    inference_id,
+    adjust_timestamps=process_pose_data.shared_constants.DEFAULT_ADJUST_TIMESTAMPS,
+    base_dir=process_pose_data.shared_constants.DEFAULT_BASE_DATA_DIRECTORY,
+    pose_detection_2d_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_DETECTION_2D_OUTPUT_SUBDIRECTORY,
+    pose_processing_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_PROCESSING_SUBDIRECTORY,
+    task_progress_bar=False,
+    notebook=False
+):
+    logger.info('Extracting 2D pose data for camera ID {} assuming output structure \'gamma\''.format(camera_id))
+    # Get start and end times into UTC
+    if start.tzinfo is None:
+        logger.info('Specified start is timezone-naive. Assuming UTC')
+        start=start.replace(tzinfo=datetime.timezone.utc)
+    if end.tzinfo is None:
+        logger.info('Specified end is timezone-naive. Assuming UTC')
+        end=end.replace(tzinfo=datetime.timezone.utc)
+    start = start.astimezone(datetime.timezone.utc)
+    end = end.astimezone(datetime.timezone.utc)
+    if end <= start:
+        raise ValueError('End time must be greater than or equal to start time')
+    logger.info('Generating list of batches')
+    batch_start_list = process_pose_data.local_io.generate_batch_start_list(
+        start=start,
+        end=end
+    )
+    num_batches = len(batch_start_list)
+    first_batch_start = batch_start_list[0]
+    last_batch_end = batch_start_list[-1] + datetime.timedelta(minutes=process_pose_data.shared_constants.DEFAULT_BATCH_LENGTH_MINUTES)
+    num_minutes = (last_batch_end - first_batch_start).total_seconds()/60
+    logger.info('Extracting 2D pose data for camera ID {} and {} batches spanning {:.3f} minutes: {} to {}'.format(
+        camera_id,
+        num_batches,
+        num_minutes,
+        first_batch_start.isoformat(),
+        last_batch_end.isoformat()
+    ))
+    extracting_start = time.time()
+    if task_progress_bar:
+        if notebook:
+            batch_start_iterator = tqdm.notebook.tqdm(batch_start_list)
+        else:
+            batch_start_iterator = tqdm.tqdm(batch_start_list)
+    else:
+        batch_start_iterator = batch_start_list
+    num_carryover_frames = 0
+    carryover_poses = None
+    for batch_start in batch_start_iterator:
+        num_carryover_frames, carryover_poses = extract_poses_2d_batch(
+            batch_start=batch_start,
+            num_carryover_frames=num_carryover_frames,
+            carryover_poses=carryover_poses,
+            environment_id=environment_id,
+            camera_id=camera_id,
+            inference_id=inference_id,
+            adjust_timestamps=adjust_timestamps,
+            base_dir=base_dir,
+            pose_detection_2d_subdirectory=pose_detection_2d_subdirectory,
+            pose_processing_subdirectory=pose_processing_subdirectory
+        )
+    extracting_time = time.time() - extracting_start
+    logger.info('Extracted {:.3f} minutes of 2D pose data in {:.3f} minutes (ratio of {:.3f})'.format(
+        num_minutes,
+        extracting_time/60,
+        (extracting_time/60)/num_minutes
+    ))
+
+def extract_poses_2d_batch(
+    batch_start,
+    num_carryover_frames,
+    carryover_poses,
+    environment_id,
+    camera_id,
+    inference_id,
+    adjust_timestamps=process_pose_data.shared_constants.DEFAULT_ADJUST_TIMESTAMPS,
+    base_dir=process_pose_data.shared_constants.DEFAULT_BASE_DATA_DIRECTORY,
+    pose_detection_2d_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_DETECTION_2D_OUTPUT_SUBDIRECTORY,
+    pose_processing_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_PROCESSING_SUBDIRECTORY
+):
+    logger.debug('Extracting 2D pose data for camera ID {} and batch starting at {}'.format(
+        camera_id,
+        batch_start.isoformat()
+    ))
+    # Get batch start time into UTC
+    if batch_start.tzinfo is None:
+        logger.info('Specified batch start is timezone-naive. Assuming UTC')
+        batch_start=batch_start.replace(tzinfo=datetime.timezone.utc)
+    batch_start = batch_start.astimezone(datetime.timezone.utc)
+    # Generate directory path for image files and 2D pose detection results
+    directory_path = poses_2d_directory_path_batch(
+        batch_start=batch_start,
+        environment_id=environment_id,
+        camera_id=camera_id,
+        base_dir=base_dir,
+        pose_detection_2d_subdirectory=pose_detection_2d_subdirectory,
+    )
+    if not os.path.isdir(directory_path):
+        logger.info('Directory \'{}\' does not exist'.format(
+            directory_path
+        ))
+        return 0, None
+    # Generate path for 2D pose detection results
+    poses_2d_filename = process_pose_data.shared_constants.POSE_DETECTION_2D_OUTPUT_STRUCTURES['gamma']['output_filename']
+    poses_2d_path = os.path.join(
+        directory_path,
+        poses_2d_filename
+    )
+    if not os.path.isfile(poses_2d_path):
+        logger.info('2D pose detection output file \'{}\' does not exist'.format(
+            poses_2d_path
+        ))
+        return 0, None
+    # Fetch 2D pose detection results
+    try:
+        with open(poses_2d_path, 'r') as fp:
+            poses_2d_list_json = json.load(fp)
+    except:
+        logger.info('2D pose detection output file \'{}\' contains no JSON'.format(
+            poses_2d_path
+        ))
+        return 0, None
+    # Parse 2D pose detection results
+    poses_2d_list = list()
+    for pose_2d_json in poses_2d_list_json:
+        pose_2d = parse_pose_2d_json_gamma(
+            pose_2d_json=pose_2d_json,
+            camera_id=camera_id,
+            batch_start=batch_start
+        )
+        poses_2d_list.append(pose_2d)
+    if len(poses_2d_list) > 0:
+        poses_2d = pd.DataFrame(poses_2d_list).set_index('pose_2d_id')
+    else:
+        logger.info('2D pose detection output file \'{}\' contains no poses'.format(
+            poses_2d_path
+        ))
+        return 0, None
+    # Iterate through 2D poses by video, correcting timestamps and writing to local disk
+    frame_counts_batch = calculate_frame_counts_batch(
+        batch_start=batch_start,
+        environment_id=environment_id,
+        camera_id=camera_id,
+        base_dir=base_dir,
+        pose_detection_2d_subdirectory=pose_detection_2d_subdirectory
+    )
+    frames_per_video=process_pose_data.shared_constants.VIDEO_FRAMES_PER_VIDEO
+    video_duration_seconds = process_pose_data.shared_constants.VIDEO_DURATION_SECONDS
+    output_directory = os.path.join(
+        './data/tmp',
+        camera_id
+    )
+    os.makedirs(output_directory, exist_ok=True)
+    frame_period_microseconds = process_pose_data.shared_constants.VIDEO_FRAME_PERIOD_MICROSECONDS
+    for video_start, poses_2d_video in poses_2d.groupby('video_start'):
+        frame_count = frame_counts_batch.loc[video_start, 'frame_count']
+        poses_2d_video_output = poses_2d_video.copy()
+        if adjust_timestamps:
+            if (
+                (num_carryover_frames > 1) or
+                (num_carryover_frames == 1 and frame_count < frames_per_video)
+            ):
+                frame_count = frame_count + num_carryover_frames
+                poses_2d_video_output['frame_number'] = poses_2d_video_output['frame_number'] + num_carryover_frames
+                poses_2d_video_output = pd.concat((
+                    carryover_poses,
+                    poses_2d_video_output
+                ))
+            num_carryover_frames = frame_count - frames_per_video
+            carryover_poses = poses_2d_video_output.loc[poses_2d_video_output['frame_number'] > frames_per_video].copy()
+            carryover_poses['video_start'] = carryover_poses['video_start'] + datetime.timedelta(seconds=video_duration_seconds)
+            carryover_poses['frame_number'] = carryover_poses['frame_number'] - frames_per_video
+            poses_2d_video_output = poses_2d_video_output.loc[poses_2d_video_output['frame_number'] <= frames_per_video]
+        else:
+            poses_2d_video_output = poses_2d_video
+        poses_2d_video_output['timestamp'] = poses_2d_video_output.apply(
+            lambda row: (
+                row['video_start'] +
+                (row['frame_number'] - 1)*datetime.timedelta(microseconds=frame_period_microseconds)
+            ),
+            axis=1
+        )
+        poses_2d_video_output = (
+            poses_2d_video_output
+            .reindex(columns=[
+                'camera_id',
+                'timestamp',
+                'bounding_box',
+                'keypoint_coordinates_2d',
+                'keypoint_quality_2d',
+                'pose_quality_2d'
+            ])
+            .sort_values('timestamp')
+        )
+        write_data_local(
+            data_object=poses_2d_video_output,
+            base_dir=base_dir,
+            pipeline_stage='pose_extraction_2d',
+            environment_id=environment_id,
+            filename_stem='poses_2d',
+            inference_id=inference_id,
+            time_segment_start=video_start,
+            object_type='dataframe',
+            append=True,
+            sort_field=None,
+            pose_processing_subdirectory=pose_processing_subdirectory
+        )
+    return num_carryover_frames, carryover_poses
+
+def parse_pose_2d_json_gamma(
+    pose_2d_json,
+    camera_id,
+    batch_start
+):
+    # Get batch start time into UTC
+    if batch_start.tzinfo is None:
+        logger.info('Specified batch start is timezone-naive. Assuming UTC')
+        batch_start=batch_start.replace(tzinfo=datetime.timezone.utc)
+    batch_start = batch_start.astimezone(datetime.timezone.utc)
+    pose_2d_id = uuid.uuid4()
+    image_id = pose_2d_json['image_id']
+    image_id_minute, image_id_second, image_id_frame_number = parse_alphapose_image_filename(image_id)
+    if (
+        image_id_minute is None or
+        image_id_second is None or
+        image_id_frame_number is None
+    ):
+        raise ValueError('Failed to parse image ID \'{}\''.format(image_id))
+    video_start = datetime.datetime(
+        batch_start.year,
+        batch_start.month,
+        batch_start.day,
+        batch_start.hour,
+        image_id_minute,
+        image_id_second,
+        tzinfo=datetime.timezone.utc
+    )
+    frame_number = image_id_frame_number
+    keypoints_flat = np.asarray(pose_2d_json['keypoints'])
+    keypoints = keypoints_flat.reshape((-1, 3))
+    keypoint_coordinates = keypoints[:, :2]
+    keypoint_quality = keypoints[:, 2]
+    keypoints = np.where(keypoints == 0.0, np.nan, keypoints)
+    keypoint_quality = np.where(keypoint_quality == 0.0, np.nan, keypoint_quality)
+    pose_quality = pose_2d_json['score']
+    bounding_box_flat = np.asarray(pose_2d_json['box'])
+    bounding_box = bounding_box_flat.reshape((2,2))
+    pose_2d = OrderedDict([
+        ('pose_2d_id', pose_2d_id),
+        ('camera_id', camera_id),
+        ('video_start', video_start),
+        ('frame_number', frame_number),
+        ('bounding_box', bounding_box),
+        ('keypoint_coordinates_2d', keypoint_coordinates),
+        ('keypoint_quality_2d', keypoint_quality),
+        ('pose_quality_2d', pose_quality)
+    ])
+    return pose_2d
+
+def calculate_frame_counts_gamma(
+    start,
+    end,
+    environment_id,
+    camera_id,
+    camera_ids=None,
+    base_dir=process_pose_data.shared_constants.DEFAULT_BASE_DATA_DIRECTORY,
+    pose_detection_2d_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_DETECTION_2D_OUTPUT_SUBDIRECTORY,
+    task_progress_bar=False,
+    notebook=False
+):
+    logger.info('Calculating frame countrs for camera ID {} assuming output structure \'gamma\''.format(camera_id))
+    # Get start and end times into UTC
+    if start.tzinfo is None:
+        logger.info('Specified start is timezone-naive. Assuming UTC')
+        start=start.replace(tzinfo=datetime.timezone.utc)
+    if end.tzinfo is None:
+        logger.info('Specified end is timezone-naive. Assuming UTC')
+        end=end.replace(tzinfo=datetime.timezone.utc)
+    start = start.astimezone(datetime.timezone.utc)
+    end = end.astimezone(datetime.timezone.utc)
+    if end <= start:
+        raise ValueError('End time must be greater than or equal to start time')
+    logger.info('Generating list of batches')
+    batch_start_list = process_pose_data.local_io.generate_batch_start_list(
+        start=start,
+        end=end
+    )
+    num_batches = len(batch_start_list)
+    first_batch_start = batch_start_list[0]
+    last_batch_end = batch_start_list[-1] + datetime.timedelta(minutes=process_pose_data.shared_constants.DEFAULT_BATCH_LENGTH_MINUTES)
+    num_minutes = (last_batch_end - first_batch_start).total_seconds()/60
+    logger.info('Calculating frame counts for camera ID {} and {} batches spanning {:.3f} minutes: {} to {}'.format(
+        camera_id,
+        num_batches,
+        num_minutes,
+        first_batch_start.isoformat(),
+        last_batch_end.isoformat()
+    ))
+    processing_start = time.time()
+    if task_progress_bar:
+        if notebook:
+            batch_start_iterator = tqdm.notebook.tqdm(batch_start_list)
+        else:
+            batch_start_iterator = tqdm.tqdm(batch_start_list)
+    else:
+        batch_start_iterator = batch_start_list
+    frame_counts_list = list()
+    for batch_start in batch_start_iterator:
+        frame_counts_batch = calculate_frame_counts_batch(
+            batch_start=batch_start,
+            environment_id=environment_id,
+            camera_id=camera_id,
+            base_dir=base_dir,
+            pose_detection_2d_subdirectory=pose_detection_2d_subdirectory
+        )
+        if len(frame_counts_batch) > 0:
+            frame_counts_list.append(frame_counts_batch)
+    frame_counts = (
+        pd.concat(frame_counts_list)
+        .sort_index()
+    )
+    processing_time = time.time() - processing_start
+    logger.info('Calculated frame counts for {:.3f} minutes of video in {:.3f} minutes (ratio of {:.3f})'.format(
+        num_minutes,
+        processing_time/60,
+        (processing_time/60)/num_minutes
+    ))
+    return frame_counts
+
+def calculate_frame_counts_batch(
+    batch_start,
+    environment_id,
+    camera_id,
+    base_dir=process_pose_data.shared_constants.DEFAULT_BASE_DATA_DIRECTORY,
+    pose_detection_2d_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_DETECTION_2D_OUTPUT_SUBDIRECTORY    
+):
+    # Get batch start time into UTC
+    if batch_start.tzinfo is None:
+        logger.info('Specified batch start is timezone-naive. Assuming UTC')
+        batch_start=batch_start.replace(tzinfo=datetime.timezone.utc)
+    batch_start = batch_start.astimezone(datetime.timezone.utc)
+    # Generate directory path for image files and 2D pose detection results
+    directory_path = poses_2d_directory_path_batch(
+        batch_start=batch_start,
+        environment_id=environment_id,
+        camera_id=camera_id,
+        base_dir=base_dir,
+        pose_detection_2d_subdirectory=pose_detection_2d_subdirectory,
+    )
+    # If there are no images for specified parameters, return empty dataframe
+    if not os.path.isdir(directory_path):
+        logger.info('Directory \'{}\' does not exist'.format(directory_path))
+        return pd.DataFrame()
+    # Build list of image times
+    images_list = list()
+    for directory_entry in os.scandir(directory_path):
+        filename=directory_entry.name
+        minute, second, frame_number = parse_alphapose_image_filename(filename)
+        if (
+            minute is None or
+            second is None or
+            frame_number is None
+        ):
+            continue
+        video_start = datetime.datetime(
+            batch_start.year,
+            batch_start.month,
+            batch_start.day,
+            batch_start.hour,
+            minute,
+            second,
+            tzinfo=datetime.timezone.utc
+        )
+        images_list.append(OrderedDict([
+            ('video_start', video_start),
+            ('frame_number', frame_number)
+        ]))
+    if len(images_list) == 0:
+        return pd.DataFrame()
+    images = pd.DataFrame(images_list)
+    frame_counts_batch = (
+        images
+        .groupby('video_start')
+        .agg(frame_count = ('frame_number', 'count'))
+    )
+    return frame_counts_batch
+   
 def fetch_2d_pose_data_alphapose_local_time_segment(
     base_dir,
     environment_id,
@@ -781,6 +1176,7 @@ def write_data_local(
         directory_path,
         filename
     )
+    logger.debug('Writing data to file \'{}\''.format(file_path))
     if append and os.path.exists(file_path):
         if object_type != 'dataframe':
             raise ValueError('Append and sort field options only available for dataframe objects')
@@ -1035,6 +1431,30 @@ def count_alphapose_frames_time_segment(
     image_filenames = glob.glob(glob_pattern)
     num_frames = len(image_filenames)
     return num_frames
+
+def poses_2d_directory_path_batch(
+    batch_start,
+    environment_id,
+    camera_id,
+    base_dir='/data',
+    pose_detection_2d_subdirectory='prepared'
+):
+    batch_start_utc = batch_start.astimezone(datetime.timezone.utc)
+    batch_start_utc_minute = batch_start_utc.minute
+    if batch_start_utc_minute % 10 != 0:
+        raise ValueError('Batch start must fall on even 10 minute boundary')
+    batch_index = round(batch_start_utc_minute/10)
+    path = os.path.join(
+        base_dir,
+        pose_detection_2d_subdirectory,
+        environment_id,
+        'frames-{}{}__{}'.format(
+            camera_id,
+            batch_start_utc.strftime('%Y-%m-%d_%H'),
+            batch_index
+        )
+    )
+    return path
 
 def generate_alphapose_batch_directory_path(
     base_alphapose_dir,
