@@ -1419,7 +1419,7 @@ def generate_pose_tracks_3d_local_by_time_segment(
             sort_field=None,
             time_segment_start=time_segment_start,
             object_type='dataframe',
-            pose_processing_subdirectory='pose_processing'
+            pose_processing_subdirectory=pose_processing_subdirectory
         )
         if len(poses_3d_df) == 0:
             continue
@@ -1596,7 +1596,7 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
             data_ids=pose_3d_ids,
             sort_field=None,
             object_type='dataframe',
-            pose_processing_subdirectory='pose_processing'
+            pose_processing_subdirectory=pose_processing_subdirectory
         )
         poses_3d_new_df = poseconnect.track.interpolate_pose_track(
             pose_track_3d=poses_3d_in_track_df,
@@ -2487,7 +2487,7 @@ def identify_pose_tracks_3d_local_by_segment(
             sort_field=None,
             time_segment_start=time_segment_start,
             object_type='dataframe',
-            pose_processing_subdirectory='pose_processing'
+            pose_processing_subdirectory=pose_processing_subdirectory
         )
         if len(poses_3d_time_segment_df) == 0:
             continue

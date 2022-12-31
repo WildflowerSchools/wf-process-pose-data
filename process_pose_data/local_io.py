@@ -874,7 +874,7 @@ def fetch_3d_poses_with_tracks_local(
         data_ids=None,
         sort_field=None,
         object_type='dataframe',
-        pose_processing_subdirectory='pose_processing'
+        pose_processing_subdirectory=pose_processing_subdirectory
     )
     pose_tracks_3d = fetch_data_local(
         base_dir=base_dir,
@@ -937,7 +937,7 @@ def fetch_person_positions_local(
         data_ids=None,
         sort_field=None,
         object_type='dataframe',
-        pose_processing_subdirectory='pose_processing'
+        pose_processing_subdirectory=pose_processing_subdirectory
     )
     if len(person_positions) == 0:
         return person_positions
@@ -1037,7 +1037,7 @@ def fetch_tray_positions_local(
         data_ids=None,
         sort_field=None,
         object_type='dataframe',
-        pose_processing_subdirectory='pose_processing'
+        pose_processing_subdirectory=pose_processing_subdirectory
     )
     if len(tray_positions) == 0:
         return tray_positions

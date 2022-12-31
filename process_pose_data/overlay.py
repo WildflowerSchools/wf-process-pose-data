@@ -551,7 +551,7 @@ def visualize_3d_pose_reconstruction(
             data_ids=[pose_3d_id],
             sort_field=None,
             object_type='dataframe',
-            pose_processing_subdirectory='pose_processing'
+            pose_processing_subdirectory=pose_processing_subdirectory
         )
     # Extract 3D pose
     if pose_3d_id not in poses_3d_df.index:
@@ -593,7 +593,7 @@ def visualize_3d_pose_reconstruction(
             data_ids=None,
             sort_field=None,
             object_type='dataframe',
-            pose_processing_subdirectory='pose_processing'
+            pose_processing_subdirectory=pose_processing_subdirectory
         )
     # Extract 2D poses from the same timestamp as the 3D pose
     poses_2d_df = poses_2d_df.loc[poses_2d_df['timestamp'] == pose_3d_timestamp].copy()
