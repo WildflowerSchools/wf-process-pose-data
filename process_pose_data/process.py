@@ -1,5 +1,6 @@
 import process_pose_data.local_io
 import process_pose_data.overlay
+import process_pose_data.shared_constants
 import poseconnect.reconstruct
 import poseconnect.track
 import poseconnect.identify
@@ -16,6 +17,281 @@ import time
 
 logger = logging.getLogger(__name__)
 
+def extract_poses_2d_local(
+    start,
+    end,
+    environment_name=None,
+    environment_id=None,
+    camera_ids=None,
+    adjust_timestamps=process_pose_data.shared_constants.DEFAULT_ADJUST_TIMESTAMPS,
+    base_dir=process_pose_data.shared_constants.DEFAULT_BASE_DATA_DIRECTORY,
+    pose_detection_2d_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_DETECTION_2D_OUTPUT_SUBDIRECTORY,
+    pose_detection_2d_output_structure=process_pose_data.shared_constants.DEFAULT_POSE_DETECTION_2D_OUTPUT_STRUCTURE,
+    pose_processing_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_PROCESSING_SUBDIRECTORY,
+    client=None,
+    uri=None,
+    token_uri=None,
+    audience=None,
+    client_id=None,
+    client_secret=None,
+    task_progress_bar=False,
+    notebook=False
+):
+    # TODO: Rewrite docstring once API is finalized
+    """
+    Fetches 2D pose data from local Alphapose output and writes back to local files.
+
+    Input data is assumed to be organized according to standard Alphapose
+    pipeline output (see documentation for that pipeline).
+
+    If camera assignment IDs are not specified, function will query Honeycomb
+    for cameras assigned to the specified environment over the specified period
+
+    Output data is organized into 10 second segments (mirroring source videos),
+    saved as
+    \'BASE_DIR/POSE_PROCESSING_SUBDIRECTORY/pose_extraction_2d/ENVIRONMENT_ID/YYYY/MM/DD/HH-MM-SS/poses_2d_INFERENCE_ID.pkl\'
+
+    Output metadata is saved as
+    \'BASE_DIR/POSE_PROCESSING_SUBDIRECTORY/pose_extraction_2d/ENVIRONMENT_ID/pose_extraction_2d_metadata_INFERENCE_ID.pkl\'
+
+    Args:
+        start (datetime): Start of period to be analyzed
+        end (datetime): End of period to be analyzed
+        environment_id (str): Honeycomb environment ID for source environment
+        camera_ids (list of str): Cameras to include (default is None)
+        base_dir: Base directory for local data (e.g., \'/data\')
+        pose_detection_2d_subdirectory (str): subdirectory (under base directory) for Alphapose output (default is \'prepared\')
+        pose_detection_2d_output_structure
+        pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
+        client (MinimalHoneycombClient): Honeycomb client (otherwise generates one) (default is None)
+        uri (str): Honeycomb URI (otherwise falls back on default strategy of MinimalHoneycombClient) (default is None)
+        token_uri (str): Honeycomb token URI (otherwise falls back on default strategy of MinimalHoneycombClient) (default is None)
+        audience (str): Honeycomb audience (otherwise falls back on default strategy of MinimalHoneycombClient) (default is None)
+        client_id (str): Honeycomb client ID (otherwise falls back on default strategy of MinimalHoneycombClient) (default is None)
+        client_secret (str): Honeycomb client secret (otherwise falls back on default strategy of MinimalHoneycombClient) (default is None)
+        task_progress_bar (bool): Boolean indicating whether script should display a progress bar (default is False)
+        notebook (bool): Boolean indicating whether script is being run in a Jupyter notebook (for progress bar display) (default is False)
+
+    Returns:
+        (str) Locally-generated inference ID for this run (identifies output data)
+    """
+    # Get start and end times into UTC
+    if start.tzinfo is None:
+        logger.info('Specified start is timezone-naive. Assuming UTC')
+        start=start.replace(tzinfo=datetime.timezone.utc)
+    if end.tzinfo is None:
+        logger.info('Specified end is timezone-naive. Assuming UTC')
+        end=end.replace(tzinfo=datetime.timezone.utc)
+    start = start.astimezone(datetime.timezone.utc)
+    end = end.astimezone(datetime.timezone.utc)
+    if end <= start:
+        raise ValueError('End time must be greater than or equal to start time')
+    # Fetch environment ID if necessary
+    if environment_id is None:
+        if environment_name is None:
+            raise ValueError('Must specify either environment name or environment ID')
+        logger.info('Querying Honeycomb to find environment ID for environment \'{}\''.format(environment_name))
+        environment_id = honeycomb_io.fetch_environment_id(
+            environment_name=environment_name,
+            client=client,
+            uri=uri,
+            token_uri=token_uri,
+            audience=audience,
+            client_id=client_id,
+            client_secret=client_secret
+        )
+    # Fetch camera info if necessary
+    if camera_ids is None:
+        logger.info('Querying Honeycomb for cameras assigned to environment \'{}\' in the period {} to {}'.format(
+            environment_id,
+            start.isoformat(),
+            end.isoformat()
+        ))
+        camera_info = honeycomb_io.fetch_camera_info(
+            environment_id=environment_id,
+            start=start,
+            end=end,
+            chunk_size=100,
+            client=client,
+            uri=uri,
+            token_uri=token_uri,
+            audience=audience,
+            client_id=client_id,
+            client_secret=client_secret
+        )
+        logger.info('Found {} cameras assigned to environment \'{}\' in the period {} to {}'.format(
+            len(camera_info),
+            environment_id,
+            start.isoformat(),
+            end.isoformat()
+        ))
+        camera_identifier = process_pose_data.shared_constants.POSE_DETECTION_2D_OUTPUT_STRUCTURES[pose_detection_2d_output_structure]['camera_identifier']
+        if camera_identifier == 'device_id':
+            camera_ids = camera_info.index.unique().tolist()
+        elif camera_identifier == 'assignment_id':
+            camera_ids = camera_info['assignment_id'].unique.tolist()
+        else:
+            raise ValueError('Camera identification must be \'device_id\' or \'assignment_id\'')
+    if camera_ids is None or len(camera_ids) == 0:
+        raise ValueError('No cameras found for specified start, end, and environment')
+    # Write metadata to local disk
+    logger.info('Generating metadata')
+    pose_extraction_2d_metadata = generate_metadata(
+        environment_id=environment_id,
+        pipeline_stage='pose_extraction_2d',
+        parameters={
+            'start': start,
+            'end': end,
+            'camera_ids': camera_ids
+        }
+    )
+    inference_id = pose_extraction_2d_metadata.get('inference_id')
+    logger.info('Writing inference metadata to local file')
+    process_pose_data.local_io.write_data_local(
+        data_object=pose_extraction_2d_metadata,
+        base_dir=base_dir,
+        pipeline_stage='pose_extraction_2d',
+        environment_id=environment_id,
+        filename_stem='pose_extraction_2d_metadata',
+        inference_id=inference_id,
+        time_segment_start=None,
+        object_type='dict',
+        append=False,
+        sort_field=None,
+        pose_processing_subdirectory=pose_processing_subdirectory
+    )
+    # Extract 2D pose data and write processed data to local disk
+    for camera_id in camera_ids:
+        if pose_detection_2d_output_structure == 'gamma':
+            process_pose_data.local_io.extract_poses_2d_gamma(
+                start=start,
+                end=end,
+                environment_id=environment_id,
+                camera_id=camera_id,
+                inference_id=inference_id,
+                adjust_timestamps=adjust_timestamps,
+                base_dir=base_dir,
+                pose_detection_2d_subdirectory=pose_detection_2d_subdirectory,
+                pose_processing_subdirectory=pose_processing_subdirectory,
+                task_progress_bar=task_progress_bar,
+                notebook=notebook
+            )
+        else:
+            raise ValueError('Only 2D pose detection output structures currently supported are {}'.format(
+                process_pose_data.shared_constants.SUPPORTED_POSE_DETECTION_2D_OUTPUT_STRUCTURES
+            ))
+    return inference_id
+
+def calculate_frame_counts_local(
+    start,
+    end,
+    environment_name=None,
+    environment_id=None,
+    camera_ids=None,
+    base_dir=process_pose_data.shared_constants.DEFAULT_BASE_DATA_DIRECTORY,
+    pose_detection_2d_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_DETECTION_2D_OUTPUT_SUBDIRECTORY,
+    pose_detection_2d_output_structure=process_pose_data.shared_constants.DEFAULT_POSE_DETECTION_2D_OUTPUT_STRUCTURE,
+    pose_processing_subdirectory=process_pose_data.shared_constants.DEFAULT_POSE_PROCESSING_SUBDIRECTORY,
+    client=None,
+    uri=None,
+    token_uri=None,
+    audience=None,
+    client_id=None,
+    client_secret=None,
+    task_progress_bar=False,
+    notebook=False
+):
+    # Get start and end times into UTC
+    if start.tzinfo is None:
+        logger.info('Specified start is timezone-naive. Assuming UTC')
+        start=start.replace(tzinfo=datetime.timezone.utc)
+    if end.tzinfo is None:
+        logger.info('Specified end is timezone-naive. Assuming UTC')
+        end=end.replace(tzinfo=datetime.timezone.utc)
+    start = start.astimezone(datetime.timezone.utc)
+    end = end.astimezone(datetime.timezone.utc)
+    if end <= start:
+        raise ValueError('End time must be greater than or equal to start time')
+    # Fetch environment ID if necessary
+    if environment_id is None:
+        if environment_name is None:
+            raise ValueError('Must specify either environment name or environment ID')
+        logger.info('Querying Honeycomb to find environment ID for environment \'{}\''.format(environment_name))
+        environment_id = honeycomb_io.fetch_environment_id(
+            environment_name=environment_name,
+            client=client,
+            uri=uri,
+            token_uri=token_uri,
+            audience=audience,
+            client_id=client_id,
+            client_secret=client_secret
+        )
+    # Fetch camera info if necessary
+    if camera_ids is None:
+        logger.info('Querying Honeycomb for cameras assigned to environment \'{}\' in the period {} to {}'.format(
+            environment_id,
+            start.isoformat(),
+            end.isoformat()
+        ))
+        camera_info = honeycomb_io.fetch_camera_info(
+            environment_id=environment_id,
+            start=start,
+            end=end,
+            chunk_size=100,
+            client=client,
+            uri=uri,
+            token_uri=token_uri,
+            audience=audience,
+            client_id=client_id,
+            client_secret=client_secret
+        )
+        logger.info('Found {} cameras assigned to environment \'{}\' in the period {} to {}'.format(
+            len(camera_info),
+            environment_id,
+            start.isoformat(),
+            end.isoformat()
+        ))
+        camera_identifier = process_pose_data.shared_constants.POSE_DETECTION_2D_OUTPUT_STRUCTURES[pose_detection_2d_output_structure]['camera_identifier']
+        if camera_identifier == 'device_id':
+            camera_ids = camera_info.index.unique().tolist()
+        elif camera_identifier == 'assignment_id':
+            camera_ids = camera_info['assignment_id'].unique.tolist()
+        else:
+            raise ValueError('Camera identification must be \'device_id\' or \'assignment_id\'')
+    if camera_ids is None or len(camera_ids) == 0:
+        raise ValueError('No cameras found for specified start, end, and environment')
+    # Calculate frame counts
+    frame_counts_list = list()
+    for camera_id in camera_ids:
+        if pose_detection_2d_output_structure == 'gamma':
+            frame_counts_camera = process_pose_data.local_io.calculate_frame_counts_gamma(
+                start=start,
+                end=end,
+                environment_id=environment_id,
+                camera_id=camera_id,
+                base_dir=base_dir,
+                pose_detection_2d_subdirectory=pose_detection_2d_subdirectory,
+                task_progress_bar=task_progress_bar,
+                notebook=notebook
+            )
+        else:
+            raise ValueError('Only 2D pose detection output structures currently supported are {}'.format(
+                process_pose_data.shared_constants.SUPPORTED_POSE_DETECTION_2D_OUTPUT_STRUCTURES
+            ))
+        if len(frame_counts_camera) > 0:
+            frame_counts_camera['camera_id'] = camera_id
+            frame_counts_list.append(frame_counts_camera)
+    frame_counts = (
+        pd.concat(frame_counts_list)
+        .reset_index()
+        .set_index([
+            'camera_id',
+            'video_start'
+        ])
+        .sort_index()
+    )
+    return frame_counts
+
 def extract_poses_2d_alphapose_local_by_time_segment(
     start,
     end,
@@ -24,7 +300,7 @@ def extract_poses_2d_alphapose_local_by_time_segment(
     camera_assignment_ids=None,
     alphapose_subdirectory='prepared',
     tree_structure='file-per-frame',
-    poses_2d_file_name='alphapose-results.json',
+    poses_2d_filename='alphapose-results.json',
     poses_2d_json_format='cmu',
     pose_processing_subdirectory='pose_processing',
     client=None,
@@ -59,7 +335,7 @@ def extract_poses_2d_alphapose_local_by_time_segment(
         environment_id (str): Honeycomb environment ID for source environment
         camera_assignment_ids (list of str): Cameras to include (default is None)
         alphapose_subdirectory (str): subdirectory (under base directory) for Alphapose output (default is \'prepared\')
-        poses_2d_file_name: Filename for Alphapose data in each directory (default is \'alphapose-results.json\')
+        poses_2d_filename: Filename for Alphapose data in each directory (default is \'alphapose-results.json\')
         poses_2d_json_format: Format of Alphapose results files (default is\'cmu\')
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         client (MinimalHoneycombClient): Honeycomb client (otherwise generates one) (default is None)
@@ -165,7 +441,7 @@ def extract_poses_2d_alphapose_local_by_time_segment(
             carryover_poses = previous_carryover_poses,
             alphapose_subdirectory=alphapose_subdirectory,
             tree_structure=tree_structure,
-            filename=poses_2d_file_name,
+            filename=poses_2d_filename,
             json_format=poses_2d_json_format
         )
         if previous_carryover_poses is not None and len(previous_carryover_poses) > 0:
@@ -207,7 +483,7 @@ def extract_poses_2d_alphapose_local_by_time_segment_legacy(
     environment_id,
     alphapose_subdirectory='prepared',
     tree_structure='file-per-frame',
-    poses_2d_file_name='alphapose-results.json',
+    poses_2d_filename='alphapose-results.json',
     poses_2d_json_format='cmu',
     pose_processing_subdirectory='pose_processing',
     task_progress_bar=False,
@@ -1143,7 +1419,7 @@ def generate_pose_tracks_3d_local_by_time_segment(
             sort_field=None,
             time_segment_start=time_segment_start,
             object_type='dataframe',
-            pose_processing_subdirectory='pose_processing'
+            pose_processing_subdirectory=pose_processing_subdirectory
         )
         if len(poses_3d_df) == 0:
             continue
@@ -1320,7 +1596,7 @@ def interpolate_pose_tracks_3d_local_by_pose_track(
             data_ids=pose_3d_ids,
             sort_field=None,
             object_type='dataframe',
-            pose_processing_subdirectory='pose_processing'
+            pose_processing_subdirectory=pose_processing_subdirectory
         )
         poses_3d_new_df = poseconnect.track.interpolate_pose_track(
             pose_track_3d=poses_3d_in_track_df,
@@ -2211,7 +2487,7 @@ def identify_pose_tracks_3d_local_by_segment(
             sort_field=None,
             time_segment_start=time_segment_start,
             object_type='dataframe',
-            pose_processing_subdirectory='pose_processing'
+            pose_processing_subdirectory=pose_processing_subdirectory
         )
         if len(poses_3d_time_segment_df) == 0:
             continue
