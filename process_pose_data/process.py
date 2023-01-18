@@ -2310,6 +2310,7 @@ def identify_pose_tracks_3d_local_by_segment(
     sensor_position_keypoint_index=poseconnect.defaults.IDENTIFICATION_SENSOR_POSITION_KEYPOINT_INDEX,
     active_person_ids=poseconnect.defaults.IDENTIFICATION_ACTIVE_PERSON_IDS,
     ignore_z=poseconnect.defaults.IDENTIFICATION_IGNORE_Z,
+    match_algorithm=poseconnect.defaults.IDENTIFICATION_MATCH_ALGORITHM,
     max_distance=poseconnect.defaults.IDENTIFICATION_MAX_DISTANCE,
     return_diagnostics=poseconnect.defaults.IDENTIFICATION_RETURN_DIAGNOSTICS,
     min_fraction_matched=0.5,
@@ -2396,6 +2397,8 @@ def identify_pose_tracks_3d_local_by_segment(
             'sensor_position_keypoint_index': sensor_position_keypoint_index,
             'active_person_ids': active_person_ids,
             'ignore_z': ignore_z,
+            'match_algorithm': match_algorithm,
+            'max_distance': max_distance,
             'min_fraction_matched':  min_fraction_matched,
             'return_diagnostics': return_diagnostics
         }
@@ -2512,6 +2515,7 @@ def identify_pose_tracks_3d_local_by_segment(
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
+                match_algorithm=match_algorithm,
                 max_distance=max_distance,
                 return_diagnostics=return_diagnostics
             )
@@ -2523,6 +2527,7 @@ def identify_pose_tracks_3d_local_by_segment(
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
+                match_algorithm=match_algorithm,
                 max_distance=max_distance,
                 return_diagnostics=return_diagnostics
             )
