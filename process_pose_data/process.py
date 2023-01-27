@@ -2310,8 +2310,9 @@ def identify_pose_tracks_3d_local_by_segment(
     sensor_position_keypoint_index=poseconnect.defaults.IDENTIFICATION_SENSOR_POSITION_KEYPOINT_INDEX,
     active_person_ids=poseconnect.defaults.IDENTIFICATION_ACTIVE_PERSON_IDS,
     ignore_z=poseconnect.defaults.IDENTIFICATION_IGNORE_Z,
+    match_algorithm=poseconnect.defaults.IDENTIFICATION_MATCH_ALGORITHM,
     max_distance=poseconnect.defaults.IDENTIFICATION_MAX_DISTANCE,
-    return_match_statistics=poseconnect.defaults.IDENTIFICATION_RETURN_MATCH_STATISTICS,
+    return_diagnostics=poseconnect.defaults.IDENTIFICATION_RETURN_DIAGNOSTICS,
     min_fraction_matched=0.5,
     pose_processing_subdirectory='pose_processing',
     task_progress_bar=False,
@@ -2351,7 +2352,7 @@ def identify_pose_tracks_3d_local_by_segment(
         sensor_position_keypoint_index (int or dict): Index of keypoint(s) corresponding to UWB sensor on each person
         active_person_ids (sequence of str): List of Honeycomb person IDs for people known to be wearing active tags
         ignore_z (bool): Boolean indicating whether to ignore z dimension when comparing pose and sensor positions
-        return_match_statistics (bool): Boolean indicating whether algorithm should return detailed match statistics along with inference ID
+        return_diagnostics (bool): Boolean indicating whether algorithm should return detailed match statistics along with inference ID
         min_fraction_matched (float): Minimum fraction of poses in track which must match person for track to be identified as person (default is 0.5)
         pose_processing_subdirectory (str): subdirectory (under base directory) for all pose processing data (default is \'pose_processing\')
         task_progress_bar (bool): Boolean indicating whether script should display an overall progress bar (default is False)
@@ -2396,8 +2397,10 @@ def identify_pose_tracks_3d_local_by_segment(
             'sensor_position_keypoint_index': sensor_position_keypoint_index,
             'active_person_ids': active_person_ids,
             'ignore_z': ignore_z,
+            'match_algorithm': match_algorithm,
+            'max_distance': max_distance,
             'min_fraction_matched':  min_fraction_matched,
-            'return_match_statistics': return_match_statistics
+            'return_diagnostics': return_diagnostics
         }
     )
     logger.info('Writing inference metadata to local file')
@@ -2470,8 +2473,8 @@ def identify_pose_tracks_3d_local_by_segment(
     else:
         time_segment_start_iterator = time_segment_start_list
     pose_identification_time_segment_df_list = list()
-    if return_match_statistics:
-        match_statistics_time_segment_df_list = list()
+    if return_diagnostics:
+        diagnostics_time_segment_df_list = list()
     for time_segment_start in time_segment_start_iterator:
         # Fetch 3D poses with tracks
         poses_3d_time_segment_df = process_pose_data.local_io.fetch_data_local(
@@ -2505,17 +2508,18 @@ def identify_pose_tracks_3d_local_by_segment(
             pose_processing_subdirectory=pose_processing_subdirectory
         )
         # Identify poses
-        if return_match_statistics:
-            pose_identification_time_segment_df, match_statistics_time_segment_df = poseconnect.identify.generate_pose_identification(
+        if return_diagnostics:
+            pose_identification_time_segment_df, diagnostics_time_segment_df = poseconnect.identify.generate_pose_identification(
                 poses_3d_with_tracks=poses_3d_with_tracks_time_segment_df,
                 sensor_data_resampled=uwb_data_resampled_time_segment_df,
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
+                match_algorithm=match_algorithm,
                 max_distance=max_distance,
-                return_match_statistics=return_match_statistics
+                return_diagnostics=return_diagnostics
             )
-            match_statistics_time_segment_df_list.append(match_statistics_time_segment_df)
+            diagnostics_time_segment_df_list.append(diagnostics_time_segment_df)
         else:
             pose_identification_time_segment_df = poseconnect.identify.generate_pose_identification(
                 poses_3d_with_tracks=poses_3d_with_tracks_time_segment_df,
@@ -2523,8 +2527,9 @@ def identify_pose_tracks_3d_local_by_segment(
                 sensor_position_keypoint_index=sensor_position_keypoint_index,
                 active_person_ids=active_person_ids,
                 ignore_z=ignore_z,
+                match_algorithm=match_algorithm,
                 max_distance=max_distance,
-                return_match_statistics=return_match_statistics
+                return_diagnostics=return_diagnostics
             )
         # Add to list
         pose_identification_time_segment_df_list.append(pose_identification_time_segment_df)
@@ -2556,9 +2561,9 @@ def identify_pose_tracks_3d_local_by_segment(
         processing_time/60,
         (processing_time/60)/num_minutes
     ))
-    if return_match_statistics:
-        match_statistics_df = pd.concat(match_statistics_time_segment_df_list)
-        return pose_track_3d_identification_inference_id, match_statistics_df
+    if return_diagnostics:
+        diagnostics_df = pd.concat(diagnostics_time_segment_df_list)
+        return pose_track_3d_identification_inference_id, diagnostics_df
     return pose_track_3d_identification_inference_id
 
 def overlay_poses_2d_local(
