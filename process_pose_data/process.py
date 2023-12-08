@@ -930,25 +930,26 @@ def reconstruct_poses_3d_pose_db_time_segment(
     )
     logger.info('Reconstructed 3D poses for time segment starting at {}'.format(time_segment_start.isoformat()))
     logger.info('Writing 3D poses to pose database for time segment starting at {}'.format(time_segment_start.isoformat()))
-    handle.insert_poses_3d_dataframe(
-        poses_3d=poses_3d_df,
-        inference_id=inference_id,
-        inference_run_created_at=inference_run_created_at,
-        environment_id=environment_id,
-        classroom_date=classroom_date,
-        coordinate_space_id=coordinate_space_id,
-        pose_model_id=pose_model_id,
-        keypoints_format=keypoints_format,
-        pose_3d_limits=pose_3d_limits,
-        min_keypoint_quality=min_keypoint_quality,
-        min_num_keypoints=min_num_keypoints,
-        min_pose_quality=min_pose_quality,
-        min_pose_pair_score=min_pose_pair_score,
-        max_pose_pair_score=max_pose_pair_score,
-        pose_pair_score_distance_method=pose_pair_score_distance_method,
-        pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
-        pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
-    )
+    if len(poses_3d_df) > 0:
+        handle.insert_poses_3d_dataframe(
+            poses_3d=poses_3d_df,
+            inference_id=inference_id,
+            inference_run_created_at=inference_run_created_at,
+            environment_id=environment_id,
+            classroom_date=classroom_date,
+            coordinate_space_id=coordinate_space_id,
+            pose_model_id=pose_model_id,
+            keypoints_format=keypoints_format,
+            pose_3d_limits=pose_3d_limits,
+            min_keypoint_quality=min_keypoint_quality,
+            min_num_keypoints=min_num_keypoints,
+            min_pose_quality=min_pose_quality,
+            min_pose_pair_score=min_pose_pair_score,
+            max_pose_pair_score=max_pose_pair_score,
+            pose_pair_score_distance_method=pose_pair_score_distance_method,
+            pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
+            pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
+        )
 
 def reconstruct_poses_3d_local_by_time_segment(
     base_dir,
