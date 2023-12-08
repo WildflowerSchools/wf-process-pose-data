@@ -13,6 +13,7 @@ def get_version():
 # Dependencies (format is 'PYPI_PACKAGE_NAME[>]=VERSION_NUMBER')
 BASE_DEPENDENCIES = [
     'wf-honeycomb-io>=0.0.1',
+    'wf-pose-db-io>=0.1.1',
     'wf-cv-utils>=3.0.0',
     'wf-video-io>=1.0.0',
     'wf-geom-render>=0.3.0',

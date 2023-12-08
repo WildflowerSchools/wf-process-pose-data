@@ -4,6 +4,7 @@ import process_pose_data.shared_constants
 import poseconnect.reconstruct
 import poseconnect.track
 import poseconnect.identify
+import pose_db_io
 import honeycomb_io
 import video_io
 import pandas as pd
@@ -606,6 +607,88 @@ def extract_poses_2d_alphapose_local_by_time_segment_legacy(
         (processing_time/60)/num_minutes
     ))
     return inference_id
+
+def reconstruct_poses_3d_pose_db_time_segment(
+    time_segment_start,
+    inference_id,
+    inference_run_created_at,
+    environment_id,
+    classroom_date,
+    coordinate_space_id,
+    pose_model_id,
+    keypoints_format,
+    camera_calibrations,
+    pose_3d_limits,
+    min_keypoint_quality=poseconnect.defaults.RECONSTRUCTION_MIN_KEYPOINT_QUALITY,
+    min_num_keypoints=poseconnect.defaults.RECONSTRUCTION_MIN_NUM_KEYPOINTS,
+    min_pose_quality=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_QUALITY,
+    min_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_PAIR_SCORE,
+    max_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MAX_POSE_PAIR_SCORE,
+    pose_pair_score_distance_method=poseconnect.defaults.RECONSTRUCTION_POSE_PAIR_SCORE_DISTANCE_METHOD,
+    pose_3d_graph_initial_edge_threshold=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_INITIAL_EDGE_THRESHOLD,
+    pose_3d_graph_max_dispersion=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_MAX_DISPERSION,
+    include_track_labels=poseconnect.defaults.RECONSTRUCTION_INCLUDE_TRACK_LABELS,
+    progress_bar=False,
+    notebook=False,
+    handle=None,
+):
+    if handle is None:
+        handle=pose_db_io.PoseHandle()
+    start = time_segment_start
+    end = time_segment_start + datetime.timedelta(seconds=10)
+    logger.info('Processing 2D poses from pose DB for time segment starting at {}'.format(time_segment_start.isoformat()))
+    logger.info('Fetching 2D pose data for time segment starting at {}'.format(time_segment_start.isoformat()))
+    poses_2d_df_time_segment = handle.fetch_poses_2d_dataframe(
+        inference_run_ids=None,
+        environment_id=environment_id,
+        camera_ids=None,
+        start=start,
+        end=end,
+        remove_inference_run_overlaps=True
+    )
+    if len(poses_2d_df_time_segment) == 0:
+        logger.info('No 2D poses found for time segment starting at %s', time_segment_start.isoformat())
+        return
+    logger.info('Fetched 2D pose data for time segment starting at {}'.format(time_segment_start.isoformat()))
+    logger.info('Reconstructing 3D poses for time segment starting at {}'.format(time_segment_start.isoformat()))
+    poses_3d_df = poseconnect.reconstruct.reconstruct_poses_3d(
+        poses_2d=poses_2d_df_time_segment,
+        camera_calibrations=camera_calibrations,
+        pose_3d_limits=pose_3d_limits,
+        min_keypoint_quality=min_keypoint_quality,
+        min_num_keypoints=min_num_keypoints,
+        min_pose_quality=min_pose_quality,
+        min_pose_pair_score=min_pose_pair_score,
+        max_pose_pair_score=max_pose_pair_score,
+        pose_pair_score_distance_method=pose_pair_score_distance_method,
+        pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
+        pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
+        include_track_labels=include_track_labels,
+        parallel=False,
+        progress_bar=progress_bar,
+        notebook=notebook,
+    )
+    logger.info('Reconstructed 3D poses for time segment starting at {}'.format(time_segment_start.isoformat()))
+    logger.info('Writing 3D poses to pose database for time segment starting at {}'.format(time_segment_start.isoformat()))
+    handle.insert_poses_3d_dataframe(
+        poses_3d=poses_3d_df,
+        inference_id=inference_id,
+        inference_run_created_at=inference_run_created_at,
+        environment_id=environment_id,
+        classroom_date=classroom_date,
+        coordinate_space_id=coordinate_space_id,
+        pose_model_id=pose_model_id,
+        keypoints_format=keypoints_format,
+        pose_3d_limits=pose_3d_limits,
+        min_keypoint_quality=min_keypoint_quality,
+        min_num_keypoints=min_num_keypoints,
+        min_pose_quality=min_pose_quality,
+        min_pose_pair_score=min_pose_pair_score,
+        max_pose_pair_score=max_pose_pair_score,
+        pose_pair_score_distance_method=pose_pair_score_distance_method,
+        pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
+        pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
+    )
 
 def reconstruct_poses_3d_local_by_time_segment(
     base_dir,
