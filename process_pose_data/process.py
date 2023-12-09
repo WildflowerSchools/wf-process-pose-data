@@ -4,16 +4,19 @@ import process_pose_data.shared_constants
 import poseconnect.reconstruct
 import poseconnect.track
 import poseconnect.identify
+import pose_db_io
 import honeycomb_io
 import video_io
 import pandas as pd
 import tqdm
+import dateutil
 from uuid import uuid4
 import multiprocessing
 import functools
 import logging
 import datetime
 import time
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -606,6 +609,347 @@ def extract_poses_2d_alphapose_local_by_time_segment_legacy(
         (processing_time/60)/num_minutes
     ))
     return inference_id
+
+def reconstruct_poses_3d_pose_db_time_segments(
+    time_segment_starts,
+    environment_id=None,
+    environment_name=None,
+    classroom_date=None,
+    pose_model_id=None,
+    pose_model_name=None,
+    keypoints_format=None,
+    coordinate_space_id=None,
+    camera_ids=None,
+    camera_calibrations=None,
+    pose_3d_limits=None,
+    room_x_limits=None,
+    room_y_limits=None,
+    floor_z=poseconnect.defaults.POSE_3D_FLOOR_Z,
+    foot_z_limits=poseconnect.defaults.POSE_3D_FOOT_Z_LIMITS,
+    knee_z_limits=poseconnect.defaults.POSE_3D_KNEE_Z_LIMITS,
+    hip_z_limits=poseconnect.defaults.POSE_3D_HIP_Z_LIMITS,
+    thorax_z_limits=poseconnect.defaults.POSE_3D_THORAX_Z_LIMITS,
+    shoulder_z_limits=poseconnect.defaults.POSE_3D_SHOULDER_Z_LIMITS,
+    elbow_z_limits=poseconnect.defaults.POSE_3D_ELBOW_Z_LIMITS,
+    hand_z_limits=poseconnect.defaults.POSE_3D_HAND_Z_LIMITS,
+    neck_z_limits=poseconnect.defaults.POSE_3D_NECK_Z_LIMITS,
+    head_z_limits=poseconnect.defaults.POSE_3D_HEAD_Z_LIMITS,
+    tolerance=poseconnect.defaults.POSE_3D_LIMITS_TOLERANCE,
+    min_keypoint_quality=poseconnect.defaults.RECONSTRUCTION_MIN_KEYPOINT_QUALITY,
+    min_num_keypoints=poseconnect.defaults.RECONSTRUCTION_MIN_NUM_KEYPOINTS,
+    min_pose_quality=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_QUALITY,
+    min_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_PAIR_SCORE,
+    max_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MAX_POSE_PAIR_SCORE,
+    pose_pair_score_distance_method=poseconnect.defaults.RECONSTRUCTION_POSE_PAIR_SCORE_DISTANCE_METHOD,
+    pose_3d_graph_initial_edge_threshold=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_INITIAL_EDGE_THRESHOLD,
+    pose_3d_graph_max_dispersion=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_MAX_DISPERSION,
+    include_track_labels=poseconnect.defaults.RECONSTRUCTION_INCLUDE_TRACK_LABELS,
+    parallel=poseconnect.defaults.RECONSTRUCTION_PARALLEL,
+    num_parallel_processes=poseconnect.defaults.RECONSTRUCTION_NUM_PARALLEL_PROCESSES,
+    overall_progress_bar=True,
+    segment_progress_bar=False,
+    notebook=False,
+    honeycomb_client=None,
+    honeycomb_uri=None,
+    honeycomb_token_uri=None,
+    honeycomb_audience=None,
+    honeycomb_client_id=None,
+    honeycomb_client_secret=None,
+    pose_db_uri=None,
+):
+    overall_start = min(time_segment_starts)
+    overall_end = max(time_segment_starts) + datetime.timedelta(seconds=10)
+    logger.info(f"Overall start is {overall_start.isoformat()}. Overall end is {overall_end.isoformat()}")
+    if environment_id is None:
+        if environment_name is None:
+            raise ValueError('Must specify either environment ID or environment_name')
+        logger.info('Environment ID not specified. Fetching environment ID from Honeycomb based on environment name')
+        environment_id = honeycomb_io.fetch_environment_id(
+            environment_id=None,
+            environment_name=environment_name,
+            client=honeycomb_client,
+            uri=honeycomb_uri,
+            token_uri=honeycomb_token_uri,
+            audience=honeycomb_audience,
+            client_id=honeycomb_client_id,
+            client_secret=honeycomb_client_secret,
+        )
+    logger.info(f"Environment ID is {environment_id}")
+    if classroom_date is None:
+        logger.info('Classroom date not specified. Inferring classroom date based on time segment starts and Honeycomb environment timezone info')
+        environment_info_list = honeycomb_io.search_objects(
+            object_name='Environment',
+            query_list=[{'field': 'environment_id', 'operator': 'EQ', 'value': environment_id}],
+            return_data=[
+                'environment_id',
+                'name',
+                'display_name',
+                'transparent_classroom_id',
+                'description',
+                'location',
+                'timezone_name',
+                'timezone_abbreviation',
+            ],
+            client=honeycomb_client,
+            uri=honeycomb_uri,
+            token_uri=honeycomb_token_uri,
+            audience=honeycomb_audience,
+            client_id=honeycomb_client_id,
+            client_secret=honeycomb_client_secret,
+        )
+        classroom_timezone_name = environment_info_list[0]['timezone_name']
+        classroom_tzinfo = dateutil.tz.gettz(classroom_timezone_name)
+        classroom_dates=list(set([time_segment_start.astimezone(classroom_tzinfo).strftime('%Y-%m-%d') for time_segment_start in time_segment_starts]))
+        if len(classroom_dates) > 1:
+            raise ValueError(f"Specified time segment starts imply multiple classroom dates: {classroom_dates}")
+        classroom_date = classroom_dates[0]
+    logger.info(f"Classroom date is {classroom_date}")
+    if pose_model_id is None:
+        if pose_model_name is None:
+            raise ValueError('Must specify either pose model ID or pose model name')
+        pose_model_id = honeycomb_io.fetch_pose_model_id(
+            pose_model_id=None,
+            pose_model_name=pose_model_name,
+            pose_model_variant_name=None,
+            client=honeycomb_client,
+            uri=honeycomb_uri,
+            token_uri=honeycomb_token_uri,
+            audience=honeycomb_audience,
+            client_id=honeycomb_client_id,
+            client_secret=honeycomb_client_secret,
+        )
+    logger.info(f"Pose model ID is {pose_model_id}")
+    if pose_model_name is None:
+        logger.info('Pose model name not specified. Fetching from Honeycomb based on pose model ID')
+        pose_model_info = honeycomb_io.fetch_pose_model_by_pose_model_id(
+            pose_model_id=pose_model_id,
+            client=honeycomb_client,
+            uri=honeycomb_uri,
+            token_uri=honeycomb_token_uri,
+            audience=honeycomb_audience,
+            client_id=honeycomb_client_id,
+            client_secret=honeycomb_client_secret,
+        )
+        pose_model_name = pose_model_info['model_name']
+    logger.info(f"Pose model name is {pose_model_name}")
+    if keypoints_format is None:
+        logger.info('Keypoints format not specified. Inferring from pose model name')
+        keypoints_format = pose_model_name.lower().replace('_', '-')
+    logger.info(f"Keypoints format is {keypoints_format}")
+    if camera_ids is None:
+        logger.info('Camera IDs not specified. Fetching from Honeycomb based on environment ID and overall start and end')
+        camera_ids = honeycomb_io.fetch_camera_ids_from_environment(
+            start=overall_start,
+            end=overall_end,
+            environment_id=environment_id,
+            environment_name=None,
+            camera_device_types=None,
+            client=honeycomb_client,
+            uri=honeycomb_uri,
+            token_uri=honeycomb_token_uri,
+            audience=honeycomb_audience,
+            client_id=honeycomb_client_id,
+            client_secret=honeycomb_client_secret,
+        )
+    logger.info(f"Camera IDs are {camera_ids}")
+    if camera_calibrations is None:
+        logger.info('Camera calibrations not specified. Fetching from Honeycomb based on camera IDs and overall start and end')
+        camera_calibrations = honeycomb_io.fetch_camera_calibrations(
+            camera_ids=camera_ids,
+            start=overall_start,
+            end=overall_end,
+            client=honeycomb_client,
+            uri=honeycomb_uri,
+            token_uri=honeycomb_token_uri,
+            audience=honeycomb_audience,
+            client_id=honeycomb_client_id,
+            client_secret=honeycomb_client_secret,
+        )
+    if coordinate_space_id is None:
+        logger.info('Coordinate space ID not specified. Inferring from camera calibrations')
+        coordinate_space_id = extract_coordinate_space_id_from_camera_calibrations(camera_calibrations)
+    if pose_3d_limits is None:
+        logger.info("Pose 3D limits not specified. Calculating from other parameters")
+        pose_3d_limits = poseconnect.pose_3d_limits_by_pose_model(
+            room_x_limits=room_x_limits,
+            room_y_limits=room_y_limits,
+            pose_model_name=pose_model_name,
+            floor_z=floor_z,
+            foot_z_limits=foot_z_limits,
+            knee_z_limits=knee_z_limits,
+            hip_z_limits=hip_z_limits,
+            thorax_z_limits=thorax_z_limits,
+            shoulder_z_limits=shoulder_z_limits,
+            elbow_z_limits=elbow_z_limits,
+            hand_z_limits=hand_z_limits,
+            neck_z_limits=neck_z_limits,
+            head_z_limits=head_z_limits,
+            tolerance=tolerance
+        )
+    num_time_segments = len(time_segment_starts)
+    logger.info('Generating inference ID')
+    inference_id = uuid.uuid4()
+    logger.info(f"Inference ID is {inference_id}")
+    inference_run_created_at = datetime.datetime.now(tz=datetime.timezone.utc)
+    logger.info(f"Inference run created at {inference_run_created_at.isoformat()}")
+    reconstruct_poses_3d_pose_db_time_segment_partial = functools.partial(
+        reconstruct_poses_3d_pose_db_time_segment,
+        inference_id=inference_id,
+        inference_run_created_at=inference_run_created_at,
+        environment_id=environment_id,
+        classroom_date=classroom_date,
+        coordinate_space_id=coordinate_space_id,
+        pose_model_id=pose_model_id,
+        keypoints_format=keypoints_format,
+        camera_calibrations=camera_calibrations,
+        pose_3d_limits=pose_3d_limits,
+        camera_ids=camera_ids,
+        min_keypoint_quality=min_keypoint_quality,
+        min_num_keypoints=min_num_keypoints,
+        min_pose_quality=min_pose_quality,
+        min_pose_pair_score=min_pose_pair_score,
+        max_pose_pair_score=max_pose_pair_score,
+        pose_pair_score_distance_method=pose_pair_score_distance_method,
+        pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
+        pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
+        include_track_labels=include_track_labels,
+        progress_bar=segment_progress_bar,
+        notebook=notebook,
+        pose_db_uri=pose_db_uri,
+    )
+    if (overall_progress_bar or segment_progress_bar) and parallel and not notebook:
+        logger.warning('Progress bars may not display properly with parallel processing enabled outside of a notebook')
+    total_minutes = num_time_segments*10/60
+    logger.info(f"Processing {num_time_segments} time segments spanning {total_minutes:.2f} minutes")
+    processing_start = time.time()
+    if parallel:
+        logger.info('Attempting to launch parallel processes')
+        if num_parallel_processes is None:
+            num_cpus=multiprocessing.cpu_count()
+            num_processes = num_cpus - 1
+            logger.info(f"Number of parallel processes not specified. {num_cpus} CPUs detected. Launching {num_processes} processes")
+        with multiprocessing.Pool(num_processes) as p:
+            if overall_progress_bar:
+                if notebook:
+                    list(tqdm.notebook.tqdm(
+                        p.imap_unordered(
+                            reconstruct_poses_3d_pose_db_time_segment_partial,
+                            time_segment_starts
+                        ),
+                        total=num_time_segments
+                    ))
+                else:
+                    list(tqdm.tqdm(
+                        p.imap_unordered(
+                            reconstruct_poses_3d_pose_db_time_segment_partial,
+                            time_segment_starts
+                        ),
+                        total=num_time_segments
+                    ))
+            else:
+                list(
+                    p.imap_unordered(
+                        reconstruct_poses_3d_pose_db_time_segment_partial,
+                        time_segment_starts
+                    )
+                )
+    else:
+        if overall_progress_bar:
+            if notebook:
+                list(map(reconstruct_poses_3d_pose_db_time_segment_partial, tqdm.notebook.tqdm(time_segment_starts)))
+            else:
+                list(map(reconstruct_poses_3d_pose_db_time_segment_partial, tqdm.tqdm(time_segment_starts)))
+        else:
+            list(map(reconstruct_poses_3d_pose_db_time_segment_partial, time_segment_starts))
+    processing_time = time.time() - processing_start
+    processing_minutes = processing_time/60
+    ratio = processing_minutes/total_minutes
+    logger.info(f"Processed {total_minutes:.2f} minutes of 2D poses in {processing_minutes:.2f} minutes (ratio of {ratio:.2f})")
+    return inference_id
+
+
+def reconstruct_poses_3d_pose_db_time_segment(
+    time_segment_start,
+    inference_id,
+    inference_run_created_at,
+    environment_id,
+    classroom_date,
+    coordinate_space_id,
+    pose_model_id,
+    keypoints_format,
+    camera_calibrations,
+    pose_3d_limits,
+    camera_ids=None,
+    min_keypoint_quality=poseconnect.defaults.RECONSTRUCTION_MIN_KEYPOINT_QUALITY,
+    min_num_keypoints=poseconnect.defaults.RECONSTRUCTION_MIN_NUM_KEYPOINTS,
+    min_pose_quality=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_QUALITY,
+    min_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MIN_POSE_PAIR_SCORE,
+    max_pose_pair_score=poseconnect.defaults.RECONSTRUCTION_MAX_POSE_PAIR_SCORE,
+    pose_pair_score_distance_method=poseconnect.defaults.RECONSTRUCTION_POSE_PAIR_SCORE_DISTANCE_METHOD,
+    pose_3d_graph_initial_edge_threshold=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_INITIAL_EDGE_THRESHOLD,
+    pose_3d_graph_max_dispersion=poseconnect.defaults.RECONSTRUCTION_POSE_3D_GRAPH_MAX_DISPERSION,
+    include_track_labels=poseconnect.defaults.RECONSTRUCTION_INCLUDE_TRACK_LABELS,
+    progress_bar=False,
+    notebook=False,
+    pose_db_uri=None,
+):
+    handle=pose_db_io.PoseHandle(pose_db_uri)
+    start = time_segment_start
+    end = time_segment_start + datetime.timedelta(seconds=10)
+    logger.info('Processing 2D poses from pose DB for time segment starting at {}'.format(time_segment_start.isoformat()))
+    logger.info('Fetching 2D pose data for time segment starting at {}'.format(time_segment_start.isoformat()))
+    poses_2d_df_time_segment = handle.fetch_poses_2d_dataframe(
+        inference_run_ids=None,
+        environment_id=environment_id,
+        camera_ids=camera_ids,
+        start=start,
+        end=end,
+        remove_inference_run_overlaps=True
+    )
+    if len(poses_2d_df_time_segment) == 0:
+        logger.info('No 2D poses found for time segment starting at %s', time_segment_start.isoformat())
+        return
+    logger.info('Fetched 2D pose data for time segment starting at {}'.format(time_segment_start.isoformat()))
+    logger.info('Reconstructing 3D poses for time segment starting at {}'.format(time_segment_start.isoformat()))
+    poses_3d_df = poseconnect.reconstruct.reconstruct_poses_3d(
+        poses_2d=poses_2d_df_time_segment,
+        camera_calibrations=camera_calibrations,
+        pose_3d_limits=pose_3d_limits,
+        min_keypoint_quality=min_keypoint_quality,
+        min_num_keypoints=min_num_keypoints,
+        min_pose_quality=min_pose_quality,
+        min_pose_pair_score=min_pose_pair_score,
+        max_pose_pair_score=max_pose_pair_score,
+        pose_pair_score_distance_method=pose_pair_score_distance_method,
+        pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
+        pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
+        include_track_labels=include_track_labels,
+        parallel=False,
+        progress_bar=progress_bar,
+        notebook=notebook,
+    )
+    logger.info('Reconstructed 3D poses for time segment starting at {}'.format(time_segment_start.isoformat()))
+    logger.info('Writing 3D poses to pose database for time segment starting at {}'.format(time_segment_start.isoformat()))
+    if len(poses_3d_df) > 0:
+        handle.insert_poses_3d_dataframe(
+            poses_3d=poses_3d_df,
+            inference_id=inference_id,
+            inference_run_created_at=inference_run_created_at,
+            environment_id=environment_id,
+            classroom_date=classroom_date,
+            coordinate_space_id=coordinate_space_id,
+            pose_model_id=pose_model_id,
+            keypoints_format=keypoints_format,
+            pose_3d_limits=pose_3d_limits,
+            min_keypoint_quality=min_keypoint_quality,
+            min_num_keypoints=min_num_keypoints,
+            min_pose_quality=min_pose_quality,
+            min_pose_pair_score=min_pose_pair_score,
+            max_pose_pair_score=max_pose_pair_score,
+            pose_pair_score_distance_method=pose_pair_score_distance_method,
+            pose_3d_graph_initial_edge_threshold=pose_3d_graph_initial_edge_threshold,
+            pose_3d_graph_max_dispersion=pose_3d_graph_max_dispersion,
+        )
 
 def reconstruct_poses_3d_local_by_time_segment(
     base_dir,
