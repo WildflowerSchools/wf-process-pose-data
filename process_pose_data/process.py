@@ -1617,6 +1617,225 @@ def reconstruct_poses_3d_alphapose_local_time_segment(
         pose_processing_subdirectory=pose_processing_subdirectory
     )
 
+def generate_pose_tracks_pose_db_by_batch(
+    start,
+    end,
+    inference_run_ids,
+    environment_id=None,
+    environment_name=None,
+    classroom_date=None,
+    max_match_distance=poseconnect.defaults.TRACKING_MAX_MATCH_DISTANCE,
+    max_iterations_since_last_match=poseconnect.defaults.TRACKING_MAX_ITERATIONS_SINCE_LAST_MATCH,
+    centroid_position_initial_sd=poseconnect.defaults.TRACKING_CENTROID_POSITION_INITIAL_SD,
+    centroid_velocity_initial_sd=poseconnect.defaults.TRACKING_CENTROID_VELOCITY_INITIAL_SD,
+    reference_delta_t_seconds=poseconnect.defaults.TRACKING_REFERENCE_DELTA_T_SECONDS,
+    reference_velocity_drift=poseconnect.defaults.TRACKING_REFERENCE_VELOCITY_DRIFT,
+    position_observation_sd=poseconnect.defaults.TRACKING_POSITION_OBSERVATION_SD,
+    num_poses_per_track_min=poseconnect.defaults.TRACKING_NUM_POSES_PER_TRACK_MIN,
+    overall_progress_bar=False,
+    segment_progress_bar=False,
+    notebook=False,
+    honeycomb_client=None,
+    honeycomb_uri=None,
+    honeycomb_token_uri=None,
+    honeycomb_audience=None,
+    honeycomb_client_id=None,
+    honeycomb_client_secret=None,
+    pose_db_uri=None,
+):
+    if environment_id is None:
+        if environment_name is None:
+            raise ValueError('Must specify either environment ID or environment_name')
+        logger.info('Environment ID not specified. Fetching environment ID from Honeycomb based on environment name')
+        environment_id = honeycomb_io.fetch_environment_id(
+            environment_id=None,
+            environment_name=environment_name,
+            client=honeycomb_client,
+            uri=honeycomb_uri,
+            token_uri=honeycomb_token_uri,
+            audience=honeycomb_audience,
+            client_id=honeycomb_client_id,
+            client_secret=honeycomb_client_secret,
+        )
+    logger.info(f"Environment ID is {environment_id}")
+    if classroom_date is None:
+        logger.info('Classroom date not specified. Inferring classroom date based on start and Honeycomb environment timezone info')
+        environment_info_list = honeycomb_io.search_objects(
+            object_name='Environment',
+            query_list=[{'field': 'environment_id', 'operator': 'EQ', 'value': environment_id}],
+            return_data=[
+                'environment_id',
+                'name',
+                'display_name',
+                'transparent_classroom_id',
+                'description',
+                'location',
+                'timezone_name',
+                'timezone_abbreviation',
+            ],
+            client=honeycomb_client,
+            uri=honeycomb_uri,
+            token_uri=honeycomb_token_uri,
+            audience=honeycomb_audience,
+            client_id=honeycomb_client_id,
+            client_secret=honeycomb_client_secret,
+        )
+        classroom_timezone_name = environment_info_list[0]['timezone_name']
+        classroom_tzinfo = dateutil.tz.gettz(classroom_timezone_name)
+        classroom_date = start.astimezone(classroom_tzinfo).strftime('%Y-%m-%d')
+    logger.info(f"Classroom date is {classroom_date}")
+    time_segment_starts = process_pose_data.local_io.generate_time_segment_start_list(
+        start=start,
+        end=end,
+    )
+    poses_3d_specifiers = list()
+    for time_segment_start in time_segment_starts:
+        poses_3d_specifiers.append({
+            'start': time_segment_start,
+            'end': time_segment_start + datetime.timedelta(seconds=10),
+            'inference_run_ids': inference_run_ids,
+            'environment_id': environment_id,
+        })
+    poses_3d_specifiers[0]['start'] = start
+    poses_3d_specifiers[-1]['end'] = end
+    logger.info('Generating inference ID')
+    inference_id = str(uuid.uuid4())
+    logger.info(f"Inference ID is {inference_id}")
+    inference_run_created_at = datetime.datetime.now(tz=datetime.timezone.utc)
+    logger.info(f"Inference run created at {inference_run_created_at.isoformat()}")
+    generate_pose_tracks_pose_db_batch_partial = functools.partial(
+        generate_pose_tracks_pose_db_batch,
+        inference_id=inference_id,
+        inference_run_created_at=inference_run_created_at,
+        environment_id=environment_id,
+        classroom_date=classroom_date,
+        max_match_distance=max_match_distance,
+        max_iterations_since_last_match=max_iterations_since_last_match,
+        centroid_position_initial_sd=centroid_position_initial_sd,
+        centroid_velocity_initial_sd=centroid_velocity_initial_sd,
+        reference_delta_t_seconds=reference_delta_t_seconds,
+        reference_velocity_drift=reference_velocity_drift,
+        position_observation_sd=position_observation_sd,
+        num_poses_per_track_min=num_poses_per_track_min,
+        progress_bar=segment_progress_bar,
+        notebook=notebook,
+        pose_db_uri=pose_db_uri,
+    )
+    num_batches = len(poses_3d_specifiers)
+    total_minutes = (end - start).total_seconds()/60
+    logger.info(f"Processing {num_batches} batches spanning {total_minutes:.2f} minutes of 3D poses")
+    processing_start = time.time()
+    if overall_progress_bar:
+        if notebook:
+            batch_iterator = tqdm.notebook.tqdm(poses_3d_specifiers)
+        else:
+            batch_iterator = tqdm.tqdm(poses_3d_specifiers)
+    else:
+        batch_iterator = poses_3d_specifiers
+    pose_tracks_3d = None
+    for poses_3d_specifier in batch_iterator:
+        pose_tracks_3d = generate_pose_tracks_pose_db_batch_partial(
+            poses_3d_specifier=poses_3d_specifier,
+            pose_tracks_3d=pose_tracks_3d,
+        )
+    if num_poses_per_track_min is not None:
+        pose_tracks_3d.filter_active_tracks(
+            num_poses_min=num_poses_per_track_min,
+            inplace=True
+        )
+    pose_tracks_output = pose_tracks_3d.output_active_tracks()
+    handle=pose_db_io.PoseHandle(pose_db_uri)
+    handle.create_pose_tracks_3d(
+        pose_tracks_output,
+        inference_id=inference_id,
+        inference_run_created_at=inference_run_created_at,
+        environment_id=environment_id,
+        classroom_date=classroom_date,
+        max_match_distance=max_match_distance,
+        max_iterations_since_last_match=max_iterations_since_last_match,
+        centroid_position_initial_sd=centroid_position_initial_sd,
+        centroid_velocity_initial_sd=centroid_velocity_initial_sd,
+        reference_delta_t_seconds=reference_delta_t_seconds,
+        reference_velocity_drift=reference_velocity_drift,
+        position_observation_sd=position_observation_sd,
+        num_poses_per_track_min=num_poses_per_track_min,
+    )
+    processing_time = time.time() - processing_start
+    processing_minutes = processing_time/60
+    ratio = processing_minutes/total_minutes
+    logger.info(f"Processed {total_minutes:.2f} minutes of 3D poses in {processing_minutes:.2f} minutes (ratio of {ratio:.2f})")
+    return inference_id
+
+
+def generate_pose_tracks_pose_db_batch(
+    poses_3d_specifier,
+    pose_tracks_3d,
+    inference_id,
+    inference_run_created_at,
+    environment_id,
+    classroom_date,
+    max_match_distance=poseconnect.defaults.TRACKING_MAX_MATCH_DISTANCE,
+    max_iterations_since_last_match=poseconnect.defaults.TRACKING_MAX_ITERATIONS_SINCE_LAST_MATCH,
+    centroid_position_initial_sd=poseconnect.defaults.TRACKING_CENTROID_POSITION_INITIAL_SD,
+    centroid_velocity_initial_sd=poseconnect.defaults.TRACKING_CENTROID_VELOCITY_INITIAL_SD,
+    reference_delta_t_seconds=poseconnect.defaults.TRACKING_REFERENCE_DELTA_T_SECONDS,
+    reference_velocity_drift=poseconnect.defaults.TRACKING_REFERENCE_VELOCITY_DRIFT,
+    position_observation_sd=poseconnect.defaults.TRACKING_POSITION_OBSERVATION_SD,
+    num_poses_per_track_min=poseconnect.defaults.TRACKING_NUM_POSES_PER_TRACK_MIN,
+    progress_bar=False,
+    notebook=False,
+    pose_db_uri=None,
+):
+    handle=pose_db_io.PoseHandle(pose_db_uri)
+    batch_inference_run_ids = poses_3d_specifier.get('inference_run_ids')
+    batch_environment_id = poses_3d_specifier.get('environment_id')
+    batch_start = poses_3d_specifier.get('start')
+    batch_end = poses_3d_specifier.get('end')
+
+    poses_3d_batch = handle.fetch_poses_3d_dataframe(
+        inference_run_ids=batch_inference_run_ids,
+        environment_id=batch_environment_id,
+        start=batch_start,
+        end=batch_end,
+    )
+    pose_tracks_3d = poseconnect.update_pose_tracks_3d(
+        poses_3d=poses_3d_batch,
+        pose_tracks_3d=pose_tracks_3d,
+        max_match_distance=max_match_distance,
+        max_iterations_since_last_match=max_iterations_since_last_match,
+        centroid_position_initial_sd=centroid_position_initial_sd,
+        centroid_velocity_initial_sd=centroid_velocity_initial_sd,
+        reference_delta_t_seconds=reference_delta_t_seconds,
+        reference_velocity_drift=reference_velocity_drift,
+        position_observation_sd=position_observation_sd,
+        progress_bar=progress_bar,
+        notebook=notebook
+    )
+    if num_poses_per_track_min is not None:
+        pose_tracks_3d.filter_inactive_tracks(
+            num_poses_min=num_poses_per_track_min,
+            inplace=True
+        )
+    pose_tracks_output = pose_tracks_3d.output_inactive_tracks()
+    pose_tracks_3d.remove_inactive_tracks()
+    handle.create_pose_tracks_3d(
+        pose_tracks_output,
+        inference_id=inference_id,
+        inference_run_created_at=inference_run_created_at,
+        environment_id=environment_id,
+        classroom_date=classroom_date,
+        max_match_distance=max_match_distance,
+        max_iterations_since_last_match=max_iterations_since_last_match,
+        centroid_position_initial_sd=centroid_position_initial_sd,
+        centroid_velocity_initial_sd=centroid_velocity_initial_sd,
+        reference_delta_t_seconds=reference_delta_t_seconds,
+        reference_velocity_drift=reference_velocity_drift,
+        position_observation_sd=position_observation_sd,
+        num_poses_per_track_min=num_poses_per_track_min,
+    )
+    return pose_tracks_3d
+
+
 def generate_pose_tracks_3d_local_by_time_segment(
     base_dir,
     environment_id,
