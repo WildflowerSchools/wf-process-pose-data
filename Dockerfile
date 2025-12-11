@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.14.2
 RUN apt-get update
 RUN apt-get -y -qq install libgl1-mesa-glx
 WORKDIR /usr/src/app
